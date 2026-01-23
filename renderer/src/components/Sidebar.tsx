@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import { Session, KnowledgeAsset } from '../types';
 import { ICONS } from '../constants';
+import { DocumentCard } from './DocumentPreview';
 
 // Allowed file types and max size
 const ALLOWED_TYPES = [
@@ -30,6 +31,7 @@ interface SidebarProps {
   assets: KnowledgeAsset[];
   onToggleAsset: (id: string) => void;
   onUploadFile?: (file: File) => Promise<void>;
+  onViewDocument?: (asset: KnowledgeAsset) => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -39,7 +41,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   onCreate,
   assets,
   onToggleAsset,
-  onUploadFile
+  onUploadFile,
+  onViewDocument
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
@@ -249,28 +252,15 @@ const Sidebar: React.FC<SidebarProps> = ({
           {/* Asset List */}
           <div className="flex flex-col gap-2">
             {assets.map(asset => (
-              <div
+              <DocumentCard
                 key={asset.id}
-                className={`flex items-center gap-2 p-2 rounded-lg transition-all cursor-pointer group relative overflow-hidden
-                  ${asset.isActive ? 'bg-accent/10 border-l-2 border-accent' : 'bg-white/[0.03] hover:bg-white/[0.05]'}`}
-                onClick={() => onToggleAsset(asset.id)}
-              >
-                <div className="flex items-center justify-center p-1">
-                  <input
-                    type="checkbox"
-                    checked={asset.isActive}
-                    onChange={() => {}}
-                    className="w-3 h-3 accent-accent cursor-pointer"
-                  />
-                </div>
-                <div className="text-accent/60 group-hover:text-accent"><ICONS.FileText /></div>
-                <div className="flex flex-col min-w-0">
-                  <span className={`text-[11px] font-medium truncate transition-colors ${asset.isActive ? 'text-accent' : 'text-secondaryText'}`}>
-                    {asset.name}
-                  </span>
-                  <span className="text-[9px] text-white/20">{asset.size}</span>
-                </div>
-              </div>
+                name={asset.name}
+                type={asset.type}
+                size={asset.size ? parseInt(asset.size) : undefined}
+                isActive={asset.isActive}
+                onClick={() => onViewDocument?.(asset)}
+                onToggle={() => onToggleAsset(asset.id)}
+              />
             ))}
           </div>
         </div>

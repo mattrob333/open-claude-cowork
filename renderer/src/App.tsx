@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
 import ChatArea from './components/ChatArea';
 import AgentStudio from './components/AgentStudio';
@@ -6,9 +6,11 @@ import RunWorkflowModal from './components/RunWorkflowModal';
 import WorkflowWizard from './components/WorkflowWizard';
 import ErrorBoundary from './components/ErrorBoundary';
 import ToolConnections from './components/ToolConnections';
+import DocumentPreview from './components/DocumentPreview';
 import { Session, Message, Role, ToolLogEntry, KnowledgeAsset, ModelOption, WorkflowTemplate } from './types';
 import { MODELS } from './constants';
 import { streamChat } from './services/chatService';
+import { supabase } from './lib/supabase';
 
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
@@ -106,6 +108,13 @@ function App() {
 
   // Tool connections modal
   const [showToolConnections, setShowToolConnections] = useState(false);
+
+  // Document preview
+  const [previewDocument, setPreviewDocument] = useState<{
+    asset: KnowledgeAsset;
+    url: string | null;
+    isLoading: boolean;
+  } | null>(null);
 
   // Get current session and messages
   const currentSession = sessions.find(s => s.id === activeSessionId);
@@ -406,6 +415,54 @@ function App() {
     setShowWorkflowWizard(false);
   }, []);
 
+  // View document in preview modal
+  const handleViewDocument = useCallback(async (asset: KnowledgeAsset) => {
+    setPreviewDocument({ asset, url: null, isLoading: true });
+
+    try {
+      // Try to get a signed URL from Supabase storage
+      // The path format is: {user_id}/{document_id}/{filename}
+      // For now, we'll use the asset.id as the document_id
+      const { data, error } = await supabase.storage
+        .from('documents')
+        .createSignedUrl(`${asset.id}/${asset.name}`, 3600);
+
+      if (error) {
+        console.error('Error getting document URL:', error);
+        // Fallback: try to create a blob URL from the local file if available
+        setPreviewDocument(prev => prev ? { ...prev, isLoading: false } : null);
+      } else {
+        setPreviewDocument(prev => prev ? { ...prev, url: data.signedUrl, isLoading: false } : null);
+      }
+    } catch (err) {
+      console.error('Error loading document:', err);
+      setPreviewDocument(prev => prev ? { ...prev, isLoading: false } : null);
+    }
+  }, []);
+
+  // Close document preview
+  const handleCloseDocumentPreview = useCallback(() => {
+    setPreviewDocument(null);
+  }, []);
+
+  // Handle document download
+  const handleDownloadDocument = useCallback(() => {
+    if (previewDocument?.url) {
+      window.open(previewDocument.url, '_blank');
+    }
+  }, [previewDocument]);
+
+  // Handle ESC key to close document preview
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && previewDocument) {
+        setPreviewDocument(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [previewDocument]);
+
   return (
     <div className="h-screen flex overflow-hidden bg-canvas">
       {/* Left Sidebar - Sessions & Knowledge Base */}
@@ -419,6 +476,7 @@ function App() {
             assets={knowledgeAssets}
             onToggleAsset={handleToggleAsset}
             onUploadFile={handleUploadFile}
+            onViewDocument={handleViewDocument}
           />
         </ErrorBoundary>
       </div>
@@ -473,6 +531,19 @@ function App() {
         isOpen={showToolConnections}
         onClose={() => setShowToolConnections(false)}
       />
+
+      {/* Document Preview Modal */}
+      {previewDocument && (
+        <DocumentPreview
+          name={previewDocument.asset.name}
+          type={previewDocument.asset.type}
+          url={previewDocument.url || undefined}
+          size={previewDocument.asset.size ? parseInt(previewDocument.asset.size) : undefined}
+          isLoading={previewDocument.isLoading}
+          onClose={handleCloseDocumentPreview}
+          onDownload={previewDocument.url ? handleDownloadDocument : undefined}
+        />
+      )}
     </div>
   );
 }
