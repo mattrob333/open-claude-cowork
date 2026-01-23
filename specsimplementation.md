@@ -66,21 +66,21 @@
 
 ## Phase 1: Core Stability
 
-- [ ] **1.1: React Error Boundaries**
+- [x] **1.1: React Error Boundaries**
   - Spec Ref: Build Plan → Phase 1 → 1.1
   - Create: `renderer/src/components/ErrorBoundary.tsx`
   - Modify: `renderer/src/App.tsx` (wrap ChatArea, AgentStudio, Sidebar)
   - Test: Throw error in component → fallback renders
   - Commit: `feat: add error boundaries for graceful failure`
 
-- [ ] **1.2: Structured Logging**
+- [x] **1.2: Structured Logging**
   - Spec Ref: Build Plan → Phase 1 → 1.2
   - Create: `server/lib/logger.js`
   - Modify: `server/server.js` (replace console.log/error)
   - Test: Requests show requestId, duration in logs
   - Commit: `feat: add structured logging with pino`
 
-- [ ] **1.3: Session Cleanup**
+- [x] **1.3: Session Cleanup**
   - Spec Ref: Build Plan → Phase 1 → 1.3
   - File: `server/server.js`
   - Action: Add TTL tracking, cleanup interval
@@ -88,14 +88,14 @@
   - Test: Session expires after 24h unused
   - Commit: `feat: add session cleanup and memory management`
 
-- [ ] **1.4: Graceful Shutdown**
+- [x] **1.4: Graceful Shutdown**
   - Spec Ref: Build Plan → Phase 1 → 1.4
   - File: `server/server.js` (lines 364-370)
   - Action: Replace SIGINT handler with full cleanup
   - Test: SIGINT → sessions cleaned, providers cleaned, exit 0
   - Commit: `feat: implement graceful shutdown`
 
-- [ ] **1.5: Complete Type Definitions**
+- [x] **1.5: Complete Type Definitions**
   - Spec Ref: Build Plan → Phase 1 → 1.5
   - File: `renderer/src/types/index.ts`
   - Action: Add StreamChunk, Chat, ToolCall, Document types
@@ -106,21 +106,21 @@
 
 ## Phase 2: Feature Completion
 
-- [ ] **2.1: Knowledge Base Upload**
+- [x] **2.1: Knowledge Base Upload**
   - Spec Ref: Build Plan → Phase 2 → 2.1
   - File: `renderer/src/components/Sidebar.tsx`
   - Action: Add drag-drop zone, file validation, progress indicator
   - Test: Upload PDF → appears in list
   - Commit: `feat: add knowledge base file upload`
 
-- [ ] **2.2: Workflow System**
+- [x] **2.2: Workflow System**
   - Spec Ref: Build Plan → Phase 2 → 2.2
   - Create: `renderer/src/components/WorkflowWizard.tsx`
   - Create: `server/routes/workflows.js`
   - Test: Create workflow → save → run with variables
   - Commit: `feat: implement workflow system`
 
-- [ ] **2.3: Tool Connection Management**
+- [x] **2.3: Tool Connection Management**
   - Spec Ref: Build Plan → Phase 2 → 2.3
   - Action: Panel showing OAuth apps, status, reconnect flow
   - Test: View connections → reconnect expired
@@ -130,26 +130,26 @@
 
 ## Phase 2.5: Docling Sidecar
 
-- [ ] **2.5.1: Docling FastAPI Service**
+- [x] **2.5.1: Docling FastAPI Service**
   - Spec Ref: Build Plan → Phase 2.5 → Epic 1
   - Create: `sidecar/docling_service/main.py`
   - Create: `sidecar/docling_service/requirements.txt`
   - Test: `/health` returns 200; `/parse/sync` parses PDF
   - Commit: `feat: add Docling sidecar service`
 
-- [ ] **2.5.2: Node.js Docling Client**
+- [x] **2.5.2: Node.js Docling Client**
   - Spec Ref: Build Plan → Phase 2.5 → Epic 2
   - Create: `server/lib/docling-client.js`
   - Test: Circuit breaker opens after 5 failures
   - Commit: `feat: add resilient Docling client`
 
-- [ ] **2.5.3: Sidecar Process Manager**
+- [x] **2.5.3: Sidecar Process Manager**
   - Spec Ref: Build Plan → Phase 2.5 → Epic 3
   - Create: `server/lib/sidecar-manager.js`
   - Test: Sidecar auto-restarts on crash
   - Commit: `feat: add sidecar lifecycle management`
 
-- [ ] **2.5.4: Document Routes**
+- [x] **2.5.4: Document Routes**
   - Spec Ref: Build Plan → Phase 2.5 → Epic 4
   - Create: `server/routes/documents.js`
   - Test: POST upload → GET list → GET single

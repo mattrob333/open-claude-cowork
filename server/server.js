@@ -12,6 +12,7 @@ import {
 } from './middleware/validation.js';
 import logger from './lib/logger.js';
 import workflowsRouter, { loadWorkflows } from './routes/workflows.js';
+import documentsRouter from './routes/documents.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -283,6 +284,9 @@ app.get('/api/health', (_req, res) => {
 
 // Mount workflows router for CRUD operations
 app.use('/api/workflows', workflowsRouter);
+
+// Mount documents router for file upload and management
+app.use('/api/documents', documentsRouter);
 
 // POST /api/workflows/run - Run a workflow with variables (needs Composio access)
 app.post('/api/workflows/run', validateWorkflowRun, async (req, res) => {
