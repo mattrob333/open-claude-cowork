@@ -213,7 +213,7 @@
   - Test: Sync detects new/changed files
   - Commit: `feat: add document sync service`
 
-- [ ] **2.7.5: Sync API Routes**
+- [x] **2.7.5: Sync API Routes**
   - Spec Ref: Build Plan → Phase 2.7 → Epic 5
   - Create: `server/routes/sources.js`
   - Test: CRUD sources, trigger sync

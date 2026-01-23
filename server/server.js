@@ -13,6 +13,7 @@ import {
 import logger from './lib/logger.js';
 import workflowsRouter, { loadWorkflows } from './routes/workflows.js';
 import documentsRouter from './routes/documents.js';
+import sourcesRouter from './routes/sources.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -287,6 +288,9 @@ app.use('/api/workflows', workflowsRouter);
 
 // Mount documents router for file upload and management
 app.use('/api/documents', documentsRouter);
+
+// Mount sources router for enterprise connector management
+app.use('/api/sources', sourcesRouter);
 
 // POST /api/workflows/run - Run a workflow with variables (needs Composio access)
 app.post('/api/workflows/run', validateWorkflowRun, async (req, res) => {
