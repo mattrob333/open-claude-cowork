@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { ToolLogEntry, WorkflowTemplate } from '../types';
 import { ICONS } from '../constants';
+import BrowserPreview, { BrowserPreviewCompact } from './BrowserPreview';
 
 /**
  * Humanizes raw tool names for display
@@ -171,8 +172,38 @@ const SAVED_WORKFLOWS: WorkflowTemplate[] = [
   { id: '4', name: 'Code Review', description: 'Technical analysis and refactoring.', icon: 'Cpu' }
 ];
 
+/**
+ * Check if a tool result contains a browser screenshot
+ */
+function extractScreenshotData(log: ToolLogEntry): { base64?: string; url?: string; title?: string } | null {
+  if (!log.result) return null;
+
+  try {
+    // Try to parse result if it's a string
+    const result = typeof log.result === 'string' ? JSON.parse(log.result) : log.result;
+
+    // Check if this is a screenshot result
+    if (result.base64 && typeof result.base64 === 'string') {
+      return {
+        base64: result.base64,
+        url: result.url,
+        title: result.title
+      };
+    }
+  } catch {
+    // Not JSON or doesn't have screenshot data
+  }
+
+  return null;
+}
+
 const AgentStudio: React.FC<AgentStudioProps> = ({ toolLogs, onClear, onSelectWorkflow, onOpenConnections }) => {
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
+  const [expandedScreenshot, setExpandedScreenshot] = useState<{
+    base64: string;
+    url?: string;
+    title?: string;
+  } | null>(null);
 
   return (
     <aside className="h-full bg-panel border-l border-border flex flex-col overflow-hidden animate-in slide-in-from-right duration-300">
@@ -320,14 +351,29 @@ const AgentStudio: React.FC<AgentStudioProps> = ({ toolLogs, onClear, onSelectWo
                                 {JSON.stringify(log.args, null, 2)}
                               </pre>
                             </div>
-                            {log.result && (
-                              <div className="flex flex-col gap-1">
-                                <span className="text-[9px] text-green-500/50 uppercase font-bold tracking-wider">Output</span>
-                                <pre className="text-[10px] text-green-400/80 font-mono whitespace-pre-wrap leading-tight break-all">
-                                  {log.result}
-                                </pre>
-                              </div>
-                            )}
+                            {log.result && (() => {
+                              const screenshot = extractScreenshotData(log);
+                              if (screenshot?.base64) {
+                                return (
+                                  <div className="flex flex-col gap-1">
+                                    <span className="text-[9px] text-green-500/50 uppercase font-bold tracking-wider">Screenshot</span>
+                                    <BrowserPreviewCompact
+                                      imageData={screenshot.base64}
+                                      url={screenshot.url}
+                                      onClick={() => setExpandedScreenshot(screenshot)}
+                                    />
+                                  </div>
+                                );
+                              }
+                              return (
+                                <div className="flex flex-col gap-1">
+                                  <span className="text-[9px] text-green-500/50 uppercase font-bold tracking-wider">Output</span>
+                                  <pre className="text-[10px] text-green-400/80 font-mono whitespace-pre-wrap leading-tight break-all">
+                                    {typeof log.result === 'string' ? log.result : JSON.stringify(log.result, null, 2)}
+                                  </pre>
+                                </div>
+                              );
+                            })()}
                           </div>
                         </div>
                       )}
@@ -339,6 +385,20 @@ const AgentStudio: React.FC<AgentStudioProps> = ({ toolLogs, onClear, onSelectWo
           )}
         </div>
       </div>
+
+      {/* Full Screenshot Modal */}
+      {expandedScreenshot && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-8 bg-black/80 animate-in fade-in duration-200">
+          <div className="max-w-4xl w-full max-h-full">
+            <BrowserPreview
+              imageData={expandedScreenshot.base64}
+              url={expandedScreenshot.url}
+              title={expandedScreenshot.title || 'Browser Screenshot'}
+              onClose={() => setExpandedScreenshot(null)}
+            />
+          </div>
+        </div>
+      )}
     </aside>
   );
 };

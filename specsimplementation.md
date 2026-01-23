@@ -178,7 +178,7 @@
   - Test: Claude can navigate and screenshot
   - Commit: `feat: add browser tools to Claude provider`
 
-- [ ] **2.6.3: Browser Preview Component**
+- [x] **2.6.3: Browser Preview Component**
   - Spec Ref: Build Plan → Phase 2.6 → Epic 3
   - Create: `renderer/src/components/BrowserPreview.tsx`
   - Modify: `renderer/src/components/AgentStudio.tsx`
