@@ -161,6 +161,7 @@ interface AgentStudioProps {
   toolLogs: ToolLogEntry[];
   onClear: () => void;
   onSelectWorkflow: (template: WorkflowTemplate) => void;
+  onOpenConnections?: () => void;
 }
 
 const SAVED_WORKFLOWS: WorkflowTemplate[] = [
@@ -170,7 +171,7 @@ const SAVED_WORKFLOWS: WorkflowTemplate[] = [
   { id: '4', name: 'Code Review', description: 'Technical analysis and refactoring.', icon: 'Cpu' }
 ];
 
-const AgentStudio: React.FC<AgentStudioProps> = ({ toolLogs, onClear, onSelectWorkflow }) => {
+const AgentStudio: React.FC<AgentStudioProps> = ({ toolLogs, onClear, onSelectWorkflow, onOpenConnections }) => {
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
 
   return (
@@ -179,7 +180,18 @@ const AgentStudio: React.FC<AgentStudioProps> = ({ toolLogs, onClear, onSelectWo
       <div className="flex-[4] flex flex-col overflow-hidden border-b border-border">
         <div className="h-[60px] flex items-center justify-between px-5 border-border border-b shrink-0">
           <span className="text-sm font-semibold tracking-wider text-primaryText uppercase opacity-70">Saved Workflows</span>
-          <button className="text-secondaryText hover:text-primaryText"><ICONS.Layout /></button>
+          <div className="flex items-center gap-2">
+            {onOpenConnections && (
+              <button
+                onClick={onOpenConnections}
+                className="text-secondaryText hover:text-accent transition-colors"
+                title="Tool Connections"
+              >
+                <ICONS.Settings />
+              </button>
+            )}
+            <button className="text-secondaryText hover:text-primaryText"><ICONS.Layout /></button>
+          </div>
         </div>
         
         <div className="flex-1 overflow-y-auto p-4">

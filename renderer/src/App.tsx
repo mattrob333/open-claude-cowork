@@ -5,8 +5,9 @@ import AgentStudio from './components/AgentStudio';
 import RunWorkflowModal from './components/RunWorkflowModal';
 import WorkflowWizard from './components/WorkflowWizard';
 import ErrorBoundary from './components/ErrorBoundary';
+import ToolConnections from './components/ToolConnections';
 import { Session, Message, Role, ToolLogEntry, KnowledgeAsset, ModelOption, WorkflowTemplate } from './types';
-import { MODELS, SERVER_URL } from './constants';
+import { MODELS } from './constants';
 import { streamChat } from './services/chatService';
 
 function generateId(): string {
@@ -36,6 +37,9 @@ function App() {
   // Workflow modals
   const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowTemplate | null>(null);
   const [showWorkflowWizard, setShowWorkflowWizard] = useState(false);
+
+  // Tool connections modal
+  const [showToolConnections, setShowToolConnections] = useState(false);
 
   // Get current session and messages
   const currentSession = sessions.find(s => s.id === activeSessionId);
@@ -297,6 +301,7 @@ function App() {
               toolLogs={toolLogs}
               onClear={handleClearLogs}
               onSelectWorkflow={handleSelectWorkflow}
+              onOpenConnections={() => setShowToolConnections(true)}
             />
           </ErrorBoundary>
         </div>
@@ -310,6 +315,12 @@ function App() {
           onRun={handleRunWorkflow}
         />
       )}
+
+      {/* Tool Connections Modal */}
+      <ToolConnections
+        isOpen={showToolConnections}
+        onClose={() => setShowToolConnections(false)}
+      />
     </div>
   );
 }
