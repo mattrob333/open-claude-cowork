@@ -219,7 +219,7 @@
   - Test: CRUD sources, trigger sync
   - Commit: `feat: add sync management API`
 
-- [ ] **2.7.6: Sync Dashboard UI**
+- [x] **2.7.6: Sync Dashboard UI**
   - Spec Ref: Build Plan → Phase 2.7 → Epic 6
   - Create: `renderer/src/components/SyncDashboard.tsx`
   - Test: View sources, trigger sync, see queue
