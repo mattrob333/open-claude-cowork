@@ -145,7 +145,11 @@ function App() {
             status: 'running',
             timestamp: Date.now()
           };
-          setToolLogs(prev => [...prev, toolLog]);
+          // Cap tool logs at 100 to prevent memory issues
+          setToolLogs(prev => {
+            const updated = [...prev, toolLog];
+            return updated.length > 100 ? updated.slice(-100) : updated;
+          });
         } else if (chunk.type === 'tool_result') {
           // Handle tool_result - match by tool_use_id or update first running item
           setToolLogs(prev => {

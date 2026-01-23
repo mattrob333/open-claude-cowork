@@ -24,8 +24,58 @@ const PORT = process.env.PORT || 3001;
 // Initialize Composio
 const composio = new Composio();
 
+// Session storage with TTL tracking
+// Map<userId, { session: ComposioSession, lastAccess: number }>
 const composioSessions = new Map();
 let defaultComposioSession = null;
+
+// Session TTL: 24 hours in milliseconds
+const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
+// Cleanup interval: run every hour
+const CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
+
+// Session cleanup function
+function cleanupExpiredSessions() {
+  const now = Date.now();
+  let cleanedCount = 0;
+
+  for (const [userId, sessionData] of composioSessions.entries()) {
+    // Skip default session
+    if (userId === 'default-user') continue;
+
+    const age = now - (sessionData.lastAccess || 0);
+    if (age > SESSION_TTL_MS) {
+      composioSessions.delete(userId);
+      cleanedCount++;
+      logger.composio.debug({ userId, ageHours: Math.round(age / 3600000) }, 'Cleaned up expired session');
+    }
+  }
+
+  if (cleanedCount > 0) {
+    logger.composio.info({ cleanedCount, remainingSessions: composioSessions.size }, 'Session cleanup completed');
+  }
+}
+
+// Start cleanup interval
+const cleanupIntervalId = setInterval(cleanupExpiredSessions, CLEANUP_INTERVAL_MS);
+
+// Helper to get or create session with TTL tracking
+function getSessionWithTTL(userId) {
+  const sessionData = composioSessions.get(userId);
+  if (sessionData) {
+    // Update last access time
+    sessionData.lastAccess = Date.now();
+    return sessionData.session;
+  }
+  return null;
+}
+
+function setSessionWithTTL(userId, session) {
+  composioSessions.set(userId, {
+    session,
+    lastAccess: Date.now()
+  });
+}
 
 // Pre-initialize Composio session on startup
 async function initializeComposioSession() {
@@ -33,7 +83,7 @@ async function initializeComposioSession() {
   logger.composio.info({ userId: defaultUserId }, 'Pre-initializing session');
   try {
     defaultComposioSession = await composio.create(defaultUserId);
-    composioSessions.set(defaultUserId, defaultComposioSession);
+    setSessionWithTTL(defaultUserId, defaultComposioSession);
     logger.composio.info({ mcpUrl: defaultComposioSession.mcp.url }, 'Session ready');
 
     // Update opencode.json with the MCP config
@@ -149,13 +199,13 @@ app.post('/api/chat', validateChatRequest, async (req, res) => {
   });
 
   try {
-    // Get or create Composio session for this user
-    let composioSession = composioSessions.get(userId);
+    // Get or create Composio session for this user (with TTL tracking)
+    let composioSession = getSessionWithTTL(userId);
     if (!composioSession) {
       logger.composio.info({ userId }, 'Creating new session');
       res.write(`data: ${JSON.stringify({ type: 'status', message: 'Initializing session...' })}\n\n`);
       composioSession = await composio.create(userId);
-      composioSessions.set(userId, composioSession);
+      setSessionWithTTL(userId, composioSession);
       logger.composio.info({ userId, mcpUrl: composioSession.mcp.url }, 'Session created');
 
       // Update opencode.json with the MCP config
@@ -333,11 +383,11 @@ app.post('/api/workflows/run', validateWorkflowRun, async (req, res) => {
   });
 
   try {
-    // Get or create Composio session
-    let composioSession = composioSessions.get(userId);
+    // Get or create Composio session (with TTL tracking)
+    let composioSession = getSessionWithTTL(userId);
     if (!composioSession) {
       composioSession = await composio.create(userId);
-      composioSessions.set(userId, composioSession);
+      setSessionWithTTL(userId, composioSession);
     }
 
     const provider = getProvider(providerName);
@@ -405,6 +455,15 @@ server.on('error', (err) => {
 // Prevent the process from exiting
 process.on('SIGINT', () => {
   logger.server.info('Shutting down server...');
+
+  // Clear cleanup interval
+  clearInterval(cleanupIntervalId);
+
+  // Clear all sessions
+  const sessionCount = composioSessions.size;
+  composioSessions.clear();
+  logger.composio.info({ clearedSessions: sessionCount }, 'Sessions cleared');
+
   server.close(() => {
     logger.server.info('Server closed');
     process.exit(0);
