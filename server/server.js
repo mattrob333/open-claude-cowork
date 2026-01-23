@@ -6,6 +6,11 @@ import fs from 'fs';
 import dotenv from 'dotenv';
 import { Composio } from '@composio/core';
 import { getProvider, getAvailableProviders, initializeProviders } from './providers/index.js';
+import {
+  validateChatRequest,
+  validateWorkflowCreate,
+  validateWorkflowRun
+} from './middleware/validation.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -55,7 +60,8 @@ function updateOpencodeConfig(mcpUrl, mcpHeaders) {
 
 // Middleware
 app.use(cors());
-app.use(express.json());
+// Body size limit: 1MB max (rejects large payloads with 413)
+app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, '..', 'renderer')));
 
 app.get('/', (_req, res) => {
@@ -63,7 +69,7 @@ app.get('/', (_req, res) => {
 });
 
 // Chat endpoint using provider abstraction
-app.post('/api/chat', async (req, res) => {
+app.post('/api/chat', validateChatRequest, async (req, res) => {
   const {
     message,
     chatId,
@@ -72,14 +78,10 @@ app.post('/api/chat', async (req, res) => {
     model = null  // Per-request model selection
   } = req.body;
 
-  console.log('[CHAT] Request received:', message);
+  console.log('[CHAT] Request received:', message.substring(0, 100) + (message.length > 100 ? '...' : ''));
   console.log('[CHAT] Chat ID:', chatId);
   console.log('[CHAT] Provider:', providerName);
   console.log('[CHAT] Model:', model || '(default)');
-
-  if (!message) {
-    return res.status(400).json({ error: 'Message is required' });
-  }
 
   // Validate provider
   const availableProviders = getAvailableProviders();
@@ -221,12 +223,8 @@ app.get('/api/workflows', (_req, res) => {
 });
 
 // POST /api/workflows - Create a new workflow
-app.post('/api/workflows', (req, res) => {
+app.post('/api/workflows', validateWorkflowCreate, (req, res) => {
   const { name, description, systemPrompt, variables, icon } = req.body;
-
-  if (!name || !systemPrompt) {
-    return res.status(400).json({ error: 'Name and systemPrompt are required' });
-  }
 
   const data = loadWorkflows();
   const workflow = {
@@ -247,7 +245,7 @@ app.post('/api/workflows', (req, res) => {
 });
 
 // POST /api/workflows/run - Run a workflow with variables
-app.post('/api/workflows/run', async (req, res) => {
+app.post('/api/workflows/run', validateWorkflowRun, async (req, res) => {
   const {
     workflowId,
     variables = {},
