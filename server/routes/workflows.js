@@ -60,7 +60,7 @@ router.get('/:id', (req, res) => {
 
 // POST /api/workflows - Create a new workflow
 router.post('/', validateWorkflowCreate, (req, res) => {
-  const { name, description, systemPrompt, variables, icon } = req.body;
+  const { name, description, systemPrompt, variables, icon, usedServices } = req.body;
 
   const data = loadWorkflows();
   const workflow = {
@@ -70,6 +70,7 @@ router.post('/', validateWorkflowCreate, (req, res) => {
     systemPrompt,
     variables: variables || [],
     icon: icon || 'chat',
+    usedServices: usedServices || [],
     createdAt: Date.now(),
     updatedAt: Date.now()
   };
@@ -84,7 +85,7 @@ router.post('/', validateWorkflowCreate, (req, res) => {
 // PUT /api/workflows/:id - Update a workflow
 router.put('/:id', validateWorkflowCreate, (req, res) => {
   const { id } = req.params;
-  const { name, description, systemPrompt, variables, icon } = req.body;
+  const { name, description, systemPrompt, variables, icon, usedServices } = req.body;
 
   const data = loadWorkflows();
   const index = data.workflows.findIndex(w => w.id === id);
@@ -100,6 +101,7 @@ router.put('/:id', validateWorkflowCreate, (req, res) => {
     systemPrompt,
     variables: variables || [],
     icon: icon || 'chat',
+    usedServices: usedServices || data.workflows[index].usedServices || [],
     updatedAt: Date.now()
   };
 

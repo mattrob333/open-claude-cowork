@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ICONS } from '../constants';
 import { SERVER_URL } from '../constants';
+import { ServiceLogo } from './ServiceLogo';
 
 interface ToolConnection {
   id: string;
@@ -19,11 +20,11 @@ interface ToolConnectionsProps {
 
 // Mock data for initial connections (will be replaced with API data)
 const INITIAL_CONNECTIONS: ToolConnection[] = [
-  { id: '1', name: 'Gmail', app: 'GMAIL', icon: '📧', status: 'connected', lastUsed: Date.now() - 3600000 },
-  { id: '2', name: 'Google Drive', app: 'GOOGLEDRIVE', icon: '📁', status: 'connected', lastUsed: Date.now() - 7200000 },
-  { id: '3', name: 'GitHub', app: 'GITHUB', icon: '🐙', status: 'expired', expiresAt: Date.now() - 86400000 },
-  { id: '4', name: 'Slack', app: 'SLACK', icon: '💬', status: 'disconnected' },
-  { id: '5', name: 'Notion', app: 'NOTION', icon: '📝', status: 'connected', lastUsed: Date.now() - 1800000 },
+  { id: '1', name: 'Gmail', app: 'gmail', icon: 'gmail', status: 'connected', lastUsed: Date.now() - 3600000 },
+  { id: '2', name: 'Google Drive', app: 'google-drive', icon: 'google-drive', status: 'connected', lastUsed: Date.now() - 7200000 },
+  { id: '3', name: 'GitHub', app: 'github', icon: 'github', status: 'expired', expiresAt: Date.now() - 86400000 },
+  { id: '4', name: 'Slack', app: 'slack', icon: 'slack', status: 'disconnected' },
+  { id: '5', name: 'Notion', app: 'notion', icon: 'notion', status: 'connected', lastUsed: Date.now() - 1800000 },
 ];
 
 const ToolConnections: React.FC<ToolConnectionsProps> = ({ isOpen, onClose }) => {
@@ -165,7 +166,9 @@ const ToolConnections: React.FC<ToolConnectionsProps> = ({ isOpen, onClose }) =>
                   className="flex items-center justify-between p-4 bg-card border border-border rounded-xl hover:border-border/80 transition-colors"
                 >
                   <div className="flex items-center gap-4">
-                    <span className="text-2xl">{connection.icon}</span>
+                    <div className="w-10 h-10 rounded-xl bg-white/5 border border-border flex items-center justify-center">
+                      <ServiceLogo service={connection.icon || connection.app} size={24} />
+                    </div>
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-primaryText">{connection.name}</span>

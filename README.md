@@ -20,10 +20,17 @@ Open Claude Cowork is an Electron-based chat application that provides a unified
 - Unified streaming interface across all providers
 
 ### Tool Execution Visualization
-- Real-time progress tracking with branded icons
+- Real-time progress tracking with **branded service logos** (Gmail, Slack, GitHub, etc.)
+- 20+ service logos rendered as inline SVGs for offline support
 - Smart tool name humanization (e.g., `mcp_composio_GMAIL_SEND` -> "Gmail Send")
-- Visual state transitions: Running -> Completed
+- Visual state transitions: Running (animated pulse) -> Completed (green checkmark)
 - Expandable details showing input/output
+
+### Service Logo Integration
+- **Execution Timeline**: Shows branded logos for each tool during execution
+- **Saved Workflows**: Displays logos of services used by each workflow
+- **Tool Connections**: Branded logos in the OAuth connection management modal
+- Auto-detection of services from workflow prompts
 
 ### Composio Integration
 - 500+ app connections (Gmail, Google Drive, Slack, GitHub, etc.)

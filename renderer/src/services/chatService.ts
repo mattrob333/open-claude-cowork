@@ -84,6 +84,7 @@ export async function saveWorkflow(workflow: {
   systemPrompt: string;
   variables: Array<{ name: string; label: string; type: string; placeholder?: string; options?: string[]; required?: boolean }>;
   icon?: string;
+  usedServices?: string[];
 }): Promise<unknown> {
   const response = await fetch(`${SERVER_URL}/api/workflows`, {
     method: 'POST',

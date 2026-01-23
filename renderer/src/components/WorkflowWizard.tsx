@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { ICONS } from '../constants';
 import { WorkflowVariable } from '../types';
 import { saveWorkflow } from '../services/chatService';
+import { extractServicesFromPrompt } from '../utils/serviceExtractor';
+import { WorkflowServiceLogosInline } from './WorkflowServiceLogos';
 
 interface WorkflowWizardProps {
   onClose: () => void;
@@ -64,12 +66,16 @@ const WorkflowWizard: React.FC<WorkflowWizardProps> = ({ onClose, onSave, initia
     setError(null);
 
     try {
+      // Auto-detect services from the system prompt
+      const detectedServices = extractServicesFromPrompt(systemPrompt);
+
       await saveWorkflow({
         name: name.trim(),
         description: description.trim(),
         systemPrompt: systemPrompt.trim(),
         variables,
-        icon: 'chat'
+        icon: 'chat',
+        usedServices: detectedServices
       });
       onSave(name);
     } catch (err) {
@@ -250,6 +256,20 @@ Please create content that is engaging and informative.`}
                 </div>
               ))}
             </div>
+
+            {/* Detected Services Preview */}
+            {systemPrompt && (() => {
+              const detectedServices = extractServicesFromPrompt(systemPrompt);
+              if (detectedServices.length > 0) {
+                return (
+                  <div className="flex flex-col gap-2 p-3 bg-card/50 border border-border rounded-lg">
+                    <span className="text-[10px] font-bold text-secondaryText uppercase tracking-widest">Detected Services</span>
+                    <WorkflowServiceLogosInline services={detectedServices} size={16} />
+                  </div>
+                );
+              }
+              return null;
+            })()}
 
             <div className="flex gap-2 mt-4">
               <button

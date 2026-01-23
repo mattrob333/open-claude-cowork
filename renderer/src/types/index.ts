@@ -188,7 +188,11 @@ export interface WorkflowTemplate {
   systemPrompt?: string;
   variables?: WorkflowVariable[];
   createdAt?: number;
+  usedServices?: string[];  // Services used by this workflow (e.g., ['gmail', 'slack'])
 }
+
+// Alias for WorkflowTemplate for backwards compatibility
+export type Workflow = WorkflowTemplate;
 
 // API response types
 export interface ApiError {

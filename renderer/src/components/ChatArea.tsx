@@ -21,18 +21,60 @@ interface ChatAreaProps {
   onSaveWorkflow: () => void;
 }
 
-const ChatArea: React.FC<ChatAreaProps> = ({ 
-  session, 
-  messages, 
-  onSend, 
-  isTyping, 
-  currentModel, 
+const ChatArea: React.FC<ChatAreaProps> = ({
+  session,
+  messages,
+  onSend,
+  isTyping,
+  currentModel,
   onModelChange,
   onSaveWorkflow
 }) => {
   const [inputText, setInputText] = useState('');
   const [showModels, setShowModels] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState<string>('');
+  const [editedMessages, setEditedMessages] = useState<Record<string, string>>({});
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const handleStartEdit = (msgId: string, content: string) => {
+    setEditingId(msgId);
+    setEditContent(content);
+  };
+
+  const handleSaveEdit = (msgId: string) => {
+    setEditedMessages(prev => ({ ...prev, [msgId]: editContent }));
+    setEditingId(null);
+    setEditContent('');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditContent('');
+  };
+
+  const getMessageContent = (msg: Message) => {
+    return editedMessages[msg.id] || msg.content;
+  };
+
+  const handleCopy = async (content: string, msgId: string) => {
+    await navigator.clipboard.writeText(content);
+    setCopiedId(msgId);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleDownload = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -56,45 +98,111 @@ const ChatArea: React.FC<ChatAreaProps> = ({
 
   const renderMessage = (msg: Message) => {
     if (msg.isArtifact && msg.artifactMetadata) {
+      const content = getMessageContent(msg);
+      const isEditing = editingId === msg.id;
+
+      // Determine if this is markdown that should be rendered
+      const isMarkdown = msg.artifactMetadata.type === 'markdown' ||
+        msg.artifactMetadata.title?.endsWith('.md');
+
+      const renderArtifactContent = () => {
+        if (isEditing) {
+          return (
+            <textarea
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              className="w-full h-full min-h-[300px] bg-transparent text-[13px] text-secondaryText font-mono leading-relaxed resize-none outline-none"
+              autoFocus
+            />
+          );
+        }
+
+        if (isMarkdown) {
+          const htmlContent = DOMPurify.sanitize(marked.parse(content) as string);
+          return (
+            <div
+              className="prose prose-invert prose-sm max-w-none text-secondaryText"
+              dangerouslySetInnerHTML={{ __html: htmlContent }}
+            />
+          );
+        }
+        return (
+          <pre className="text-[13px] text-secondaryText font-mono whitespace-pre-wrap leading-relaxed overflow-x-auto">
+            {content}
+          </pre>
+        );
+      };
+
       return (
         <div key={msg.id} className="w-full flex flex-col gap-2">
-          {/* Artifact Card Container */}
-          <div className="bg-[#2a2a2a] border border-border rounded-xl overflow-hidden shadow-xl max-w-[90%] self-start animate-in fade-in slide-in-from-bottom-2 duration-300">
+          {/* Artifact Card Container - 60% width like Google AI Studio */}
+          <div className="bg-[#1e1e1e] border border-white/10 rounded-2xl overflow-hidden shadow-2xl w-[60%] min-w-[400px] self-start animate-in fade-in slide-in-from-bottom-2 duration-300">
             {/* Header */}
-            <div className="bg-white/5 px-4 py-2 flex items-center justify-between border-b border-white/5">
-              <div className="flex items-center gap-2">
-                <div className="text-accent"><ICONS.FileText /></div>
-                <span className="text-xs font-bold text-primaryText mono">{msg.artifactMetadata.title}</span>
+            <div className="bg-white/[0.03] px-5 py-3 flex items-center justify-between border-b border-white/5">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center text-accent">
+                  <ICONS.FileText />
+                </div>
+                <span className="text-sm font-semibold text-white tracking-tight">{msg.artifactMetadata.title}</span>
               </div>
-              <button 
-                className="p-1 hover:bg-white/10 rounded transition-colors text-secondaryText hover:text-primaryText"
-                onClick={() => navigator.clipboard.writeText(msg.content)}
+              <button
+                className="p-2 hover:bg-white/10 rounded-lg transition-all text-white/40 hover:text-white"
+                onClick={() => handleCopy(content, msg.id)}
+                title="Copy to clipboard"
               >
-                <ICONS.Copy />
+                {copiedId === msg.id ? (
+                  <span className="text-green-400"><ICONS.CheckCircle /></span>
+                ) : (
+                  <ICONS.Copy />
+                )}
               </button>
             </div>
-            
+
             {/* Body */}
-            <div className="p-4 overflow-x-auto">
-              <pre className="text-xs text-secondaryText font-medium mono whitespace-pre-wrap leading-relaxed">
-                {msg.content}
-              </pre>
+            <div className="p-5 max-h-[400px] overflow-y-auto bg-[#161616]">
+              {renderArtifactContent()}
             </div>
 
             {/* Footer */}
-            <div className="bg-white/[0.02] px-4 py-2 border-t border-white/5 flex items-center gap-4">
-              <button className="flex items-center gap-1.5 text-[10px] font-bold text-secondaryText hover:text-accent transition-colors">
-                <ICONS.Edit />
-                Edit
-              </button>
-              <button className="flex items-center gap-1.5 text-[10px] font-bold text-secondaryText hover:text-accent transition-colors">
-                <ICONS.Download />
-                Download
-              </button>
-              <button className="flex items-center gap-1.5 text-[10px] font-bold text-secondaryText hover:text-accent transition-colors ml-auto">
-                <ICONS.Tool />
-                Send to Studio
-              </button>
+            <div className="bg-white/[0.02] px-5 py-3 border-t border-white/5 flex items-center gap-3">
+              {isEditing ? (
+                <>
+                  <button
+                    onClick={() => handleSaveEdit(msg.id)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-500/20 hover:bg-green-500/30 text-[11px] font-semibold text-green-400 hover:text-green-300 transition-all"
+                  >
+                    <ICONS.CheckCircle />
+                    Save
+                  </button>
+                  <button
+                    onClick={handleCancelEdit}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-[11px] font-semibold text-white/60 hover:text-white transition-all"
+                  >
+                    Cancel
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => handleStartEdit(msg.id, content)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-[11px] font-semibold text-white/60 hover:text-white transition-all"
+                  >
+                    <ICONS.Edit />
+                    Edit
+                  </button>
+                  <button
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-[11px] font-semibold text-white/60 hover:text-white transition-all"
+                    onClick={() => handleDownload(content, msg.artifactMetadata?.title || 'download.txt')}
+                  >
+                    <ICONS.Download />
+                    Download
+                  </button>
+                  <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent/20 hover:bg-accent/30 text-[11px] font-semibold text-accent hover:text-accent transition-all ml-auto">
+                    <ICONS.Tool />
+                    Send to Studio
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
