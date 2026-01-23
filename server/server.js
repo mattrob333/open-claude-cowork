@@ -8,10 +8,10 @@ import { Composio } from '@composio/core';
 import { getProvider, getAvailableProviders, initializeProviders, clearProviderCache } from './providers/index.js';
 import {
   validateChatRequest,
-  validateWorkflowCreate,
   validateWorkflowRun
 } from './middleware/validation.js';
 import logger from './lib/logger.js';
+import workflowsRouter, { loadWorkflows } from './routes/workflows.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -281,58 +281,10 @@ app.get('/api/health', (_req, res) => {
 
 // ==================== WORKFLOW ENDPOINTS ====================
 
-const workflowsPath = path.join(__dirname, 'workflows.json');
+// Mount workflows router for CRUD operations
+app.use('/api/workflows', workflowsRouter);
 
-function loadWorkflows() {
-  try {
-    if (!fs.existsSync(workflowsPath)) {
-      return { workflows: [] };
-    }
-    return JSON.parse(fs.readFileSync(workflowsPath, 'utf8'));
-  } catch (error) {
-    logger.workflow.error({ error: error.message }, 'Error loading workflows');
-    return { workflows: [] };
-  }
-}
-
-function saveWorkflows(data) {
-  try {
-    fs.writeFileSync(workflowsPath, JSON.stringify(data, null, 2));
-  } catch (error) {
-    logger.workflow.error({ error: error.message }, 'Error saving workflows');
-    throw error;
-  }
-}
-
-// GET /api/workflows - List all workflows
-app.get('/api/workflows', (_req, res) => {
-  const data = loadWorkflows();
-  res.json(data.workflows);
-});
-
-// POST /api/workflows - Create a new workflow
-app.post('/api/workflows', validateWorkflowCreate, (req, res) => {
-  const { name, description, systemPrompt, variables, icon } = req.body;
-
-  const data = loadWorkflows();
-  const workflow = {
-    id: `wf_${Date.now()}`,
-    name,
-    description: description || '',
-    systemPrompt,
-    variables: variables || [],
-    icon: icon || 'chat',
-    createdAt: Date.now()
-  };
-
-  data.workflows.push(workflow);
-  saveWorkflows(data);
-  logger.workflow.info({ workflowId: workflow.id, name: workflow.name }, 'Workflow created');
-
-  res.json(workflow);
-});
-
-// POST /api/workflows/run - Run a workflow with variables
+// POST /api/workflows/run - Run a workflow with variables (needs Composio access)
 app.post('/api/workflows/run', validateWorkflowRun, async (req, res) => {
   const {
     workflowId,
