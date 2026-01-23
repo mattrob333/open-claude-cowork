@@ -1,5 +1,6 @@
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import { BaseProvider } from './base-provider.js';
+import toolExecutor, { browserToolDefinitions } from '../lib/tool-executor.js';
 
 /**
  * Claude Agent SDK provider implementation
@@ -8,17 +9,48 @@ import { BaseProvider } from './base-provider.js';
 export class ClaudeProvider extends BaseProvider {
   constructor(config = {}) {
     super(config);
-    // Default allowed tools - matches server.js
+
+    // Browser tool names from tool executor
+    this.browserToolNames = browserToolDefinitions.map(t => t.name);
+
+    // Default allowed tools - includes browser tools
     this.defaultAllowedTools = config.allowedTools || [
       'Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep',
-      'WebSearch', 'WebFetch', 'TodoWrite'
+      'WebSearch', 'WebFetch', 'TodoWrite',
+      // Browser automation tools
+      ...this.browserToolNames
     ];
+
     this.defaultMaxTurns = config.maxTurns || 20;
     this.permissionMode = config.permissionMode || 'bypassPermissions';
+
+    // Reference to tool executor for browser operations
+    this.toolExecutor = toolExecutor;
   }
 
   get name() {
     return 'claude';
+  }
+
+  /**
+   * Check if a tool is a browser tool
+   */
+  isBrowserTool(toolName) {
+    return this.browserToolNames.includes(toolName);
+  }
+
+  /**
+   * Execute a browser tool and return the result
+   */
+  async executeBrowserTool(toolName, input) {
+    return this.toolExecutor.execute(toolName, input);
+  }
+
+  /**
+   * Cleanup resources (browser, etc.)
+   */
+  async cleanup() {
+    await this.toolExecutor.cleanup();
   }
 
   /**
@@ -43,13 +75,18 @@ export class ClaudeProvider extends BaseProvider {
       systemPrompt = null
     } = params;
 
+    // Check if browser tools are requested
+    const hasBrowserTools = allowedTools.some(t => this.browserToolNames.includes(t));
+
     // Build query options - exact match to server.js structure
     const queryOptions = {
       allowedTools,
       maxTurns,
       mcpServers,
       permissionMode: this.permissionMode,
-      ...(systemPrompt && { systemPrompt })
+      ...(systemPrompt && { systemPrompt }),
+      // Add custom browser tool definitions if browser tools are allowed
+      ...(hasBrowserTools && { tools: browserToolDefinitions })
     };
 
     // Check for existing session - matches server.js session resumption logic
@@ -116,6 +153,20 @@ export class ClaudeProvider extends BaseProvider {
                 provider: this.name
               };
               console.log('[Claude] Tool use:', block.name);
+
+              // Execute browser tools locally
+              if (this.isBrowserTool(block.name)) {
+                console.log('[Claude] Executing browser tool:', block.name);
+                const browserResult = await this.executeBrowserTool(block.name, block.input);
+                yield {
+                  type: 'tool_result',
+                  result: browserResult,
+                  tool_use_id: block.id,
+                  name: block.name,
+                  provider: this.name
+                };
+                console.log('[Claude] Browser tool result:', browserResult.success ? 'success' : 'failed');
+              }
             }
           }
         }

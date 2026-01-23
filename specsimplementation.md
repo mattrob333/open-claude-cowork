@@ -171,7 +171,7 @@
   - Test: `navigate`, `click`, `screenshot` work
   - Commit: `feat: add agent-browser wrapper`
 
-- [ ] **2.6.2: Browser Tools for Claude**
+- [x] **2.6.2: Browser Tools for Claude**
   - Spec Ref: Build Plan → Phase 2.6 → Epic 2
   - Modify: `server/providers/claude-provider.js`
   - Create: `server/lib/tool-executor.js`
