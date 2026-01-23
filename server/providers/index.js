@@ -1,5 +1,6 @@
 import { ClaudeProvider } from './claude-provider.js';
 import { OpencodeProvider } from './opencode-provider.js';
+import logger from '../lib/logger.js';
 
 // Provider registry
 const providers = {
@@ -69,14 +70,14 @@ export async function clearProviderCache() {
 }
 
 export async function initializeProviders() {
-  console.log('[Providers] Initializing providers...');
+  logger.provider.info('Initializing providers...');
   try {
     // Get and initialize opencode provider
     const opencodeProvider = getProvider('opencode');
     await opencodeProvider.initialize();
-    console.log('[Providers] Opencode provider initialized');
+    logger.provider.info('Opencode provider initialized');
   } catch (error) {
-    console.error('[Providers] Error initializing providers:', error.message);
+    logger.provider.error({ error: error.message }, 'Error initializing providers');
   }
 }
 

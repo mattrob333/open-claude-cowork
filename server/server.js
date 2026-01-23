@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import dotenv from 'dotenv';
 import { Composio } from '@composio/core';
-import { getProvider, getAvailableProviders, initializeProviders } from './providers/index.js';
+import { getProvider, getAvailableProviders, initializeProviders, clearProviderCache } from './providers/index.js';
 import {
   validateChatRequest,
   validateWorkflowCreate,
@@ -452,20 +452,66 @@ server.on('error', (err) => {
   logger.server.error({ error: err.message }, 'Server error');
 });
 
-// Prevent the process from exiting
-process.on('SIGINT', () => {
-  logger.server.info('Shutting down server...');
+// Graceful shutdown handler
+let isShuttingDown = false;
 
-  // Clear cleanup interval
-  clearInterval(cleanupIntervalId);
+async function gracefulShutdown(signal) {
+  if (isShuttingDown) {
+    logger.server.warn({ signal }, 'Shutdown already in progress, ignoring signal');
+    return;
+  }
+  isShuttingDown = true;
 
-  // Clear all sessions
-  const sessionCount = composioSessions.size;
-  composioSessions.clear();
-  logger.composio.info({ clearedSessions: sessionCount }, 'Sessions cleared');
+  logger.server.info({ signal }, 'Graceful shutdown initiated');
 
-  server.close(() => {
-    logger.server.info('Server closed');
+  // Set a force-exit timeout (10 seconds)
+  const forceExitTimeout = setTimeout(() => {
+    logger.server.error('Forced exit after timeout');
+    process.exit(1);
+  }, 10000);
+
+  try {
+    // 1. Stop accepting new connections
+    server.close(() => {
+      logger.server.info('HTTP server closed');
+    });
+
+    // 2. Clear cleanup interval
+    clearInterval(cleanupIntervalId);
+    logger.server.debug('Cleanup interval cleared');
+
+    // 3. Clean up providers
+    logger.server.info('Cleaning up providers...');
+    await clearProviderCache();
+    logger.provider.info('Providers cleaned up');
+
+    // 4. Clear all Composio sessions
+    const sessionCount = composioSessions.size;
+    composioSessions.clear();
+    logger.composio.info({ clearedSessions: sessionCount }, 'Sessions cleared');
+
+    // 5. All done
+    clearTimeout(forceExitTimeout);
+    logger.server.info('Graceful shutdown complete');
     process.exit(0);
-  });
+  } catch (error) {
+    clearTimeout(forceExitTimeout);
+    logger.server.error({ error: error.message }, 'Error during shutdown');
+    process.exit(1);
+  }
+}
+
+// Handle termination signals
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  logger.server.fatal({ error: error.message, stack: error.stack }, 'Uncaught exception');
+  gracefulShutdown('uncaughtException');
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (reason, promise) => {
+  logger.server.error({ reason: String(reason) }, 'Unhandled promise rejection');
 });
