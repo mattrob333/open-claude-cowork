@@ -189,7 +189,7 @@
 
 ## Phase 2.7: Enterprise Connectors
 
-- [ ] **2.7.1: Database Schema**
+- [x] **2.7.1: Database Schema**
   - Spec Ref: Build Plan → Phase 2.7 → Epic 1
   - Modify: `scripts/setup_supabase.sql`
   - Test: source_files, processing_queue tables exist
