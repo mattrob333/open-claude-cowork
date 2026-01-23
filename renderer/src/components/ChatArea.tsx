@@ -1,6 +1,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 import { Session, Message, Role, ModelOption } from '../types';
 import { MODELS, ICONS } from '../constants';
 
@@ -113,7 +114,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
       }
 
       if (msg.role === Role.ASSISTANT) {
-        const htmlContent = marked.parse(msg.content) as string;
+        const htmlContent = DOMPurify.sanitize(marked.parse(msg.content) as string);
         return (
           <div
             className="markdown-content"
