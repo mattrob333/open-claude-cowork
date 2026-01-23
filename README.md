@@ -1,367 +1,302 @@
-<p align="center">
-  <h1 align="center">Open Claude Cowork</h1>
-</p>
+# Open Claude Cowork
 
-<p align="center">
-  <a href="https://platform.composio.dev?utm_source=github&utm_medium=readme&utm_campaign=open-claude-cowork">
-    <img src="open-claude-cowork.gif" alt="Open Claude Cowork Demo" width="800">
-  </a>
-</p>
+A modern desktop application for AI-powered workflow automation with multi-provider support and real-time tool execution visualization.
 
-<p align="center">
-  <a href="https://docs.composio.dev/tool-router/overview">
-    <img src="https://img.shields.io/badge/Composio-Tool%20Router-orange" alt="Composio">
-  </a>
-  <a href="https://platform.claude.com/docs/en/agent-sdk/overview">
-    <img src="https://img.shields.io/badge/Claude-Agent%20SDK-blue" alt="Claude Agent SDK">
-  </a>
-  <a href="https://github.com/anthropics/claude-code">
-    <img src="https://img.shields.io/badge/Powered%20by-Claude%20Code-purple" alt="Claude Code">
-  </a>
-  <a href="https://twitter.com/composio">
-    <img src="https://img.shields.io/twitter/follow/composio?style=social" alt="Twitter">
-  </a>
-</p>
+## Overview
 
-<p align="center">
-  An open-source desktop chat application powered by Claude Agent SDK and Composio Tool Router. Build AI agents with access to 500+ tools and persistent chat sessions.
-</p>
+Open Claude Cowork is an Electron-based chat application that provides a unified interface for interacting with AI agents. It features:
 
-<p align="center">
-  <a href="https://platform.composio.dev?utm_source=github&utm_medium=readme&utm_campaign=open-claude-cowork">
-    <img src="https://img.shields.io/badge/Get%20Started-Composio%20Platform-orange?style=for-the-badge" alt="Get Started with Composio">
-  </a>
-</p>
-
----
+- **Multi-Provider Support**: Switch between Claude Agent SDK and Opencode SDK
+- **Tool Integration**: 500+ app integrations via Composio MCP
+- **Real-Time Execution Visualization**: Watch tools execute with branded icons and status tracking
+- **Workflow Templates**: Save and reuse common automation patterns
+- **Knowledge Base**: Attach documents to enhance AI context
 
 ## Features
 
-- **Multi-Provider Support** - Choose between Claude Agent SDK and Opencode for different model options
-- **Claude Agent SDK Integration** - Full agentic capabilities with tool use and multi-turn conversations
-- **Opencode SDK Support** - Access multiple LLM providers (Claude, GPT-5, Grok, GLM, MiniMax, and more)
-- **Composio Tool Router** - Access to 500+ external tools (Gmail, Slack, GitHub, Google Drive, and more)
-- **Persistent Chat Sessions** - Conversations maintain context across messages using SDK session management
-- **Multi-Chat Support** - Create and switch between multiple chat sessions
-- **Real-time Streaming** - Server-Sent Events (SSE) for smooth, token-by-token response streaming
-- **Tool Call Visualization** - See tool inputs and outputs in real-time in the sidebar
-- **Progress Tracking** - Todo list integration for tracking agent task progress
-- **Modern UI** - Clean, dark-themed interface inspired by Claude.ai
-- **Desktop App** - Native Electron application for macOS, Windows, and Linux
+### Multi-Provider Architecture
+- **Claude Provider**: Uses Anthropic's Claude Agent SDK with session resumption
+- **Opencode Provider**: Alternative backend with local server support
+- Unified streaming interface across all providers
 
----
+### Tool Execution Visualization
+- Real-time progress tracking with branded icons
+- Smart tool name humanization (e.g., `mcp_composio_GMAIL_SEND` -> "Gmail Send")
+- Visual state transitions: Running -> Completed
+- Expandable details showing input/output
 
-## Tech Stack
+### Composio Integration
+- 500+ app connections (Gmail, Google Drive, Slack, GitHub, etc.)
+- MCP (Model Context Protocol) for tool discovery
+- OAuth authentication flows
+- Per-session tool access
 
-| Category | Technology |
-|----------|------------|
-| **Desktop Framework** | Electron.js |
-| **Backend** | Node.js + Express |
-| **AI Providers** | Claude Agent SDK + Opencode SDK |
-| **Tool Integration** | Composio Tool Router + MCP |
-| **Streaming** | Server-Sent Events (SSE) |
-| **Markdown** | Marked.js |
-| **Styling** | Vanilla CSS |
+### Rich Chat Experience
+- Markdown rendering with syntax highlighting
+- Streaming responses
+- Artifact support for code blocks and documents
+- Session management with history
 
----
+## Quick Start
 
-## Getting Started
+### Prerequisites
 
-### Quick Setup (Recommended)
+- Node.js >= 18.0.0
+- npm or yarn
+- API Keys:
+  - Anthropic API Key (for Claude provider)
+  - Composio API Key (for tool integrations)
+
+### Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/ComposioHQ/open-claude-cowork.git
+git clone https://github.com/yourusername/open-claude-cowork.git
 cd open-claude-cowork
 
-# Run the automated setup script
+# Run interactive setup
 ./setup.sh
 ```
 
 The setup script will:
-- Install Composio CLI if not already installed
-- Guide you through Composio signup/login
-- Configure your API keys in `.env`
-- Install all project dependencies
+1. Install Composio CLI
+2. Configure API keys
+3. Install all dependencies
+4. Set up OAuth connections
 
-### Manual Setup
-
-If you prefer manual setup, follow these steps:
-
-#### Prerequisites
-
-- Node.js 18+ installed
-- **For Claude Provider:**
-  - Anthropic API key ([console.anthropic.com](https://console.anthropic.com))
-- **For Opencode Provider:**
-  - Opencode API key ([opencode.dev](https://opencode.dev))
-- Composio API key ([app.composio.dev](https://app.composio.dev))
-
-#### 1. Clone the Repository
+### Manual Installation
 
 ```bash
-git clone https://github.com/ComposioHQ/open-claude-cowork.git
-cd open-claude-cowork
-```
-
-#### 2. Install Dependencies
-
-```bash
-# Install Electron app dependencies
+# Install root dependencies
 npm install
 
-# Install backend dependencies
-cd server
-npm install
-cd ..
+# Install server dependencies
+cd server && npm install
+
+# Install renderer dependencies
+cd ../renderer && npm install
+
+# Create .env file in server directory
+# Add your API keys:
+# ANTHROPIC_API_KEY=sk-ant-...
+# COMPOSIO_API_KEY=...
 ```
 
-#### 3. Configure Environment
+### Running the Application
 
 ```bash
-cp .env.example .env
+# Terminal 1: Start the backend server
+cd server && npm start
+
+# Terminal 2: Start the frontend (Vite dev server)
+cd renderer && npm run dev
 ```
 
-Edit `.env` with your API keys:
+The app will be available at `http://localhost:5173`
 
-```env
-# Claude Provider
-ANTHROPIC_API_KEY=your-anthropic-api-key
-
-# Opencode Provider (optional)
-OPENCODE_API_KEY=your-opencode-api-key
-OPENCODE_HOSTNAME=127.0.0.1
-OPENCODE_PORT=4096
-
-# Composio Integration
-COMPOSIO_API_KEY=your-composio-api-key
-```
-
-**Provider Selection:**
-- The app allows switching between **Claude** and **Opencode** providers in the UI
-- Only configure the API key(s) for the provider(s) you want to use
-- Opencode can route to multiple model providers through a single SDK
-
-### Starting the Application
-
-You need **two terminal windows**:
-
-**Terminal 1 - Backend Server:**
-```bash
-cd server
-npm start
-```
-
-**Terminal 2 - Electron App:**
-```bash
-npm start
-```
-
----
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Electron App                              │
-│  ┌─────────────────┐    ┌─────────────────┐                     │
-│  │   Main Process  │    │ Renderer Process │                    │
-│  │   (main.js)     │    │  (renderer.js)   │                    │
-│  └────────┬────────┘    └────────┬─────────┘                    │
-│           │                      │                               │
-│           └──────────┬───────────┘                               │
-│                      │ IPC (preload.js)                          │
-└──────────────────────┼───────────────────────────────────────────┘
-                       │
-                       │ HTTP + SSE
-                       ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                     Backend Server                               │
-│  ┌─────────────────┐    ┌─────────────────┐                     │
-│  │  Express.js     │───▶│ Claude Agent SDK │                    │
-│  │  (server.js)    │    │  + Session Mgmt  │                    │
-│  └─────────────────┘    └────────┬─────────┘                    │
-│                                  │                               │
-│                                  ▼                               │
-│                    ┌─────────────────────────┐                   │
-│                    │   Composio Tool Router  │                   │
-│                    │   (MCP Server)          │                   │
-│                    └─────────────────────────┘                   │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### Session Management
-
-The app uses Claude Agent SDK's built-in session management:
-1. First message creates a new session, returning a `session_id`
-2. Subsequent messages use `resume` option with the stored session ID
-3. Full conversation context is maintained server-side
-
-### Tool Integration
-
-Composio Tool Router provides MCP server integration:
-- Tools are authenticated per-user via Composio dashboard
-- Available tools include Google Workspace, Slack, GitHub, and 500+ more
-- Tool calls are streamed and displayed in real-time
-
-### Provider Architecture
-
-The application supports multiple AI providers through a pluggable provider system:
-
-#### Claude Provider
-- Uses Anthropic's Claude Agent SDK
-- Available models:
-  - Claude Opus 4.5 (claude-opus-4-5-20250514)
-  - Claude Sonnet 4.5 (claude-sonnet-4-5-20250514) - default
-  - Claude Haiku 4.5 (claude-haiku-4-5-20250514)
-- Session management via built-in SDK session tracking
-- Direct streaming from Claude API
-
-#### Opencode Provider
-- Routes to multiple LLM providers through a single SDK
-- Available models:
-  - `opencode/big-pickle` - Free reasoning model (default)
-  - `opencode/gpt-5-nano` - OpenAI's reasoning models
-  - `opencode/glm-4.7-free` - Zhipu GLM models
-  - `opencode/grok-code` - xAI Grok for coding
-  - `opencode/minimax-m2.1-free` - MiniMax models
-  - `anthropic/*` - Claude models through Opencode
-- Event-based streaming with real-time part updates
-- Session management per chat conversation
-- Extended thinking support (reasoning parts)
-
-**Streaming Implementation:**
-Both providers use Server-Sent Events (SSE) for streaming responses:
-- Backend: Express server streams normalized chunks via HTTP
-- Frontend: Real-time processing with markdown rendering
-- Tool calls: Inline display with input/output visualization
-
-### MCP Configuration (Tools Integration)
-
-**Important: Opencode requires MCP servers to be configured in `server/opencode.json`**
-
-The application automatically updates this file when starting:
-1. Composio session is created on first request with MCP URL
-2. Backend writes the MCP config to `server/opencode.json`
-3. Opencode reads the config file and loads MCP tools
-
-**File: `server/opencode.json`**
-```json
-{
-  "mcp": {
-    "composio": {
-      "type": "remote",
-      "url": "https://backend.composio.dev/tool_router/YOUR_ROUTER_ID/mcp",
-      "headers": {
-        "x-api-key": "YOUR_API_KEY"
-      }
-    }
-  }
-}
-```
-
-**Note:** Don't manually edit this file - it's generated automatically by the backend. The placeholders are replaced with real credentials from your Composio session.
-
----
-
-## File Structure
+## Project Structure
 
 ```
 open-claude-cowork/
 ├── main.js                 # Electron main process
-├── preload.js              # IPC security bridge
-├── renderer/
-│   ├── index.html          # Chat interface
-│   ├── renderer.js         # Frontend logic & streaming handler
-│   └── style.css           # Styling
-├── server/
-│   ├── server.js           # Express + Provider routing + MCP config writer
-│   ├── opencode.json       # MCP config (auto-generated, see note below)
-│   ├── providers/
-│   │   ├── base-provider.js      # Abstract base class
-│   │   ├── claude-provider.js    # Claude Agent SDK implementation
-│   │   └── opencode-provider.js  # Opencode SDK implementation
+├── preload.js              # Electron preload bridge
+├── package.json            # Root package.json
+│
+├── server/                 # Backend server
+│   ├── server.js           # Express server (port 3001)
+│   ├── providers/          # AI provider implementations
+│   │   ├── base-provider.js
+│   │   ├── claude-provider.js
+│   │   ├── opencode-provider.js
+│   │   └── index.js
 │   └── package.json
-├── package.json
-├── .env                    # API keys (not tracked)
-└── .env.example            # Template
+│
+├── renderer/               # Frontend (React + Vite)
+│   ├── src/
+│   │   ├── App.tsx         # Main application component
+│   │   ├── components/
+│   │   │   ├── ChatArea.tsx      # Chat interface
+│   │   │   ├── AgentStudio.tsx   # Workflows + Execution log
+│   │   │   ├── Sidebar.tsx       # Sessions + Knowledge base
+│   │   │   └── ...
+│   │   ├── services/
+│   │   │   └── chatService.ts    # API communication
+│   │   ├── types/
+│   │   │   └── index.ts          # TypeScript definitions
+│   │   └── styles/
+│   │       └── globals.css       # Global styles
+│   └── package.json
+│
+├── CLAUDE.md               # AI assistant guidance
+├── ENGINEERING_LOG.md      # Development changelog
+└── BUILD_PLAN.md           # Roadmap
 ```
 
-**Note on `server/opencode.json`:**
-- Generated automatically by the backend when you run the app
-- Contains Composio MCP URL and credentials
-- Opencode reads this file to load tools
-- Don't track in git (add to `.gitignore` or use template)
+## Architecture
 
----
+### Communication Flow
 
-## Available Scripts
+```
+┌──────────────┐    HTTP/SSE    ┌──────────────┐    SDK    ┌──────────────┐
+│   Renderer   │ <------------> │    Server    │ <-------> │  AI Provider │
+│   (React)    │                │  (Express)   │           │  (Claude/OC) │
+└──────────────┘                └──────────────┘           └──────────────┘
+                                       │
+                                       │ MCP
+                                       ▼
+                                ┌──────────────┐
+                                │   Composio   │
+                                │   (Tools)    │
+                                └──────────────┘
+```
 
-| Command | Description |
-|---------|-------------|
-| `npm start` | Start the Electron app |
-| `npm run dev` | Start in development mode with live reload |
-| `cd server && npm start` | Start the backend server |
+### Provider Interface
 
----
+All providers implement the same async generator interface:
+
+```typescript
+interface Provider {
+  query(options: QueryOptions): AsyncGenerator<StreamChunk>;
+}
+
+type StreamChunk =
+  | { type: 'session_init'; session_id: string }
+  | { type: 'text'; content: string }
+  | { type: 'tool_use'; name: string; input: object; tool_use_id: string }
+  | { type: 'tool_result'; result: any; tool_use_id: string }
+  | { type: 'done' };
+```
+
+## Configuration
+
+### Environment Variables
+
+Create a `.env` file in the `server/` directory:
+
+```env
+# Required
+ANTHROPIC_API_KEY=sk-ant-...
+COMPOSIO_API_KEY=...
+
+# Optional
+PORT=3001
+NODE_ENV=development
+```
+
+### API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/chat` | POST | Main chat endpoint (SSE stream) |
+| `/api/providers` | GET | List available providers |
+| `/api/health` | GET | Health check |
+
+### Chat Request Body
+
+```json
+{
+  "message": "Help me draft an email",
+  "chatId": "session-123",
+  "provider": "claude",
+  "model": "claude-sonnet-4-20250514"
+}
+```
+
+## Development
+
+### Tech Stack
+
+- **Frontend**: React 18, TypeScript, Tailwind CSS, Vite
+- **Backend**: Node.js, Express
+- **Desktop**: Electron
+- **AI**: Claude Agent SDK, Opencode SDK
+- **Tools**: Composio MCP
+
+### Scripts
+
+```bash
+# Development
+cd renderer && npm run dev    # Start frontend with hot reload
+cd server && npm start        # Start backend server
+
+# Production
+npm run build                 # Build for production
+npm start                     # Run Electron app
+```
+
+### Adding a New Provider
+
+1. Create `server/providers/your-provider.js`:
+
+```javascript
+import { BaseProvider } from './base-provider.js';
+
+export class YourProvider extends BaseProvider {
+  async *query({ message, chatId, model, mcpServers }) {
+    // Yield chunks as described in the interface
+    yield { type: 'text', content: 'Hello!' };
+    yield { type: 'done' };
+  }
+}
+```
+
+2. Register in `server/providers/index.js`:
+
+```javascript
+import { YourProvider } from './your-provider.js';
+registerProvider('your-provider', YourProvider);
+```
+
+## UI Components
+
+### Execution Progress Panel
+
+The right sidebar shows real-time tool execution with:
+
+- **Smart Branding**: Recognizes tools and shows appropriate icons (Gmail, Docs, GitHub, etc.)
+- **Timeline View**: Two-column grid with vertical connector line
+- **Status Indicators**: Spinner for running, green checkmark for completed
+- **Expandable Details**: Click to view input parameters and output
+
+### Chat Area
+
+- **Markdown Rendering**: Full GFM support with syntax highlighting
+- **Streaming**: Real-time text streaming from AI
+- **Artifacts**: Special rendering for code blocks and documents
 
 ## Troubleshooting
 
-**"Failed to connect to backend"**
-- Ensure backend server is running on port 3001
-- Check Terminal 1 for error logs
-- Verify firewall isn't blocking localhost:3001
+### Common Issues
 
-**"API key error"**
-- For Claude: Verify `ANTHROPIC_API_KEY` in `.env` starts with `sk-ant-`
-- For Opencode: Ensure `OPENCODE_API_KEY` is valid and from opencode.dev
-- Ensure `COMPOSIO_API_KEY` is valid
+**Server won't start**
+- Check that port 3001 is available
+- Verify API keys in `.env`
+- Run `npm install` in server directory
 
-**"Provider not available"**
-- Ensure the required API key is configured in `.env`
-- Restart the backend server after changing `.env`
-- Check server logs for initialization errors
+**Tools not working**
+- Run `composio whoami` to verify CLI auth
+- Check Composio dashboard for connection status
+- Re-run OAuth flow if needed
 
-**"Session not persisting"**
-- Check server logs for session ID capture
-- Ensure `chatId` is being passed from frontend
-- Different providers use different session mechanisms (Claude SDK vs Opencode sessions)
-
-**"Streaming seems slow or incomplete"**
-- Check network/firewall settings for SSE connections
-- Verify backend is receiving events from provider SDK
-- Check browser console for connection errors
-- For Opencode: Ensure event subscription is receiving `message.part.updated` events
-
-**"Opencode models not responding"**
-- Verify Opencode server is running (localhost:4096 or configured URL)
-- Check that model identifiers match Opencode format (e.g., `opencode/big-pickle`)
-- Review Opencode API documentation for available models
-- Check server logs for Opencode SDK initialization errors
-
----
+**Spinners stuck in "Running" state**
+- This has been fixed with fail-safe sweep on stream end
+- Ensure you're running the latest code
 
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
----
+## License
 
-## Resources
+MIT License - see [LICENSE](LICENSE) for details.
 
-- [Claude Agent SDK Documentation](https://docs.anthropic.com/en/docs/claude-agent-sdk)
-- [Opencode SDK Documentation](https://docs.opencode.dev)
-- [Composio Tool Router](https://docs.composio.dev/tool-router)
-- [Composio Dashboard](https://app.composio.dev)
-- [Electron Documentation](https://www.electronjs.org/docs)
-- [Opencode Platform](https://opencode.dev)
+## Acknowledgments
 
----
-
-<p align="center">
-  Built with Claude Code and Composio
-</p>
+- [Anthropic](https://anthropic.com) for Claude Agent SDK
+- [Composio](https://composio.dev) for tool integrations
+- [Electron](https://electronjs.org) for desktop framework
+- [Vite](https://vitejs.dev) for blazing fast builds

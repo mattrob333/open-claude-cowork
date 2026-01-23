@@ -68,6 +68,56 @@ const providerModels = {
   ]
 };
 
+if (!window.electronAPI) {
+  const baseUrl = window.location.protocol.startsWith('http')
+    ? window.location.origin
+    : 'http://localhost:3001';
+
+  window.electronAPI = {
+    sendMessage: async (message, chatId, provider = 'claude', model = null) => {
+      const response = await fetch(`${baseUrl}/api/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ message, chatId, provider, model })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
+      }
+
+      return {
+        getReader: async function() {
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          return {
+            read: async () => {
+              const { done, value } = await reader.read();
+              return {
+                done,
+                value: done ? undefined : decoder.decode(value, { stream: true })
+              };
+            }
+          };
+        }
+      };
+    },
+    getProviders: async () => {
+      try {
+        const response = await fetch(`${baseUrl}/api/providers`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return await response.json();
+      } catch (error) {
+        console.error('[WEB] Error fetching providers:', error);
+        return { providers: ['claude'], default: 'claude' };
+      }
+    }
+  };
+}
+
 // Initialize
 function init() {
   updateGreeting();

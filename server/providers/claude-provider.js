@@ -39,7 +39,8 @@ export class ClaudeProvider extends BaseProvider {
       chatId,
       mcpServers = {},
       allowedTools = this.defaultAllowedTools,
-      maxTurns = this.defaultMaxTurns
+      maxTurns = this.defaultMaxTurns,
+      systemPrompt = null
     } = params;
 
     // Build query options - exact match to server.js structure
@@ -47,7 +48,8 @@ export class ClaudeProvider extends BaseProvider {
       allowedTools,
       maxTurns,
       mcpServers,
-      permissionMode: this.permissionMode
+      permissionMode: this.permissionMode,
+      ...(systemPrompt && { systemPrompt })
     };
 
     // Check for existing session - matches server.js session resumption logic

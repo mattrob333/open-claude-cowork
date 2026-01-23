@@ -56,6 +56,11 @@ function updateOpencodeConfig(mcpUrl, mcpHeaders) {
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(express.static(path.join(__dirname, '..', 'renderer')));
+
+app.get('/', (_req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'renderer', 'index.html'));
+});
 
 // Chat endpoint using provider abstraction
 app.post('/api/chat', async (req, res) => {
@@ -182,6 +187,160 @@ app.get('/api/health', (_req, res) => {
     timestamp: new Date().toISOString(),
     providers: getAvailableProviders()
   });
+});
+
+// ==================== WORKFLOW ENDPOINTS ====================
+
+const workflowsPath = path.join(__dirname, 'workflows.json');
+
+function loadWorkflows() {
+  try {
+    if (!fs.existsSync(workflowsPath)) {
+      return { workflows: [] };
+    }
+    return JSON.parse(fs.readFileSync(workflowsPath, 'utf8'));
+  } catch (error) {
+    console.error('[WORKFLOWS] Error loading workflows:', error);
+    return { workflows: [] };
+  }
+}
+
+function saveWorkflows(data) {
+  try {
+    fs.writeFileSync(workflowsPath, JSON.stringify(data, null, 2));
+  } catch (error) {
+    console.error('[WORKFLOWS] Error saving workflows:', error);
+    throw error;
+  }
+}
+
+// GET /api/workflows - List all workflows
+app.get('/api/workflows', (_req, res) => {
+  const data = loadWorkflows();
+  res.json(data.workflows);
+});
+
+// POST /api/workflows - Create a new workflow
+app.post('/api/workflows', (req, res) => {
+  const { name, description, systemPrompt, variables, icon } = req.body;
+
+  if (!name || !systemPrompt) {
+    return res.status(400).json({ error: 'Name and systemPrompt are required' });
+  }
+
+  const data = loadWorkflows();
+  const workflow = {
+    id: `wf_${Date.now()}`,
+    name,
+    description: description || '',
+    systemPrompt,
+    variables: variables || [],
+    icon: icon || 'chat',
+    createdAt: Date.now()
+  };
+
+  data.workflows.push(workflow);
+  saveWorkflows(data);
+  console.log('[WORKFLOWS] Created workflow:', workflow.id);
+
+  res.json(workflow);
+});
+
+// POST /api/workflows/run - Run a workflow with variables
+app.post('/api/workflows/run', async (req, res) => {
+  const {
+    workflowId,
+    variables = {},
+    provider: providerName = 'claude',
+    model = null,
+    userId = 'default-user'
+  } = req.body;
+
+  console.log('[WORKFLOW RUN] Workflow ID:', workflowId);
+  console.log('[WORKFLOW RUN] Variables:', variables);
+  console.log('[WORKFLOW RUN] Provider:', providerName);
+
+  const workflows = loadWorkflows().workflows;
+  const workflow = workflows.find(w => w.id === workflowId);
+
+  if (!workflow) {
+    return res.status(404).json({ error: 'Workflow not found' });
+  }
+
+  // Interpolate variables into system prompt
+  let prompt = workflow.systemPrompt;
+  for (const [key, value] of Object.entries(variables)) {
+    prompt = prompt.replace(new RegExp(`{{${key}}}`, 'g'), value);
+  }
+
+  console.log('[WORKFLOW RUN] Interpolated prompt:', prompt.substring(0, 200) + '...');
+
+  // Set up SSE response
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+
+  res.write(`data: ${JSON.stringify({ type: 'connected', message: 'Running workflow...' })}\n\n`);
+
+  const heartbeatInterval = setInterval(() => {
+    if (!res.writableEnded) {
+      res.write(': heartbeat\n\n');
+    }
+  }, 15000);
+
+  res.on('close', () => {
+    clearInterval(heartbeatInterval);
+  });
+
+  try {
+    // Get or create Composio session
+    let composioSession = composioSessions.get(userId);
+    if (!composioSession) {
+      composioSession = await composio.create(userId);
+      composioSessions.set(userId, composioSession);
+    }
+
+    const provider = getProvider(providerName);
+
+    const mcpServers = {
+      composio: {
+        type: 'http',
+        url: composioSession.mcp.url,
+        headers: composioSession.mcp.headers
+      }
+    };
+
+    // Generate a unique chat ID for this workflow run
+    const chatId = `workflow_${workflowId}_${Date.now()}`;
+
+    // Stream responses from the provider
+    for await (const chunk of provider.query({
+      prompt,
+      chatId,
+      userId,
+      mcpServers,
+      model,
+      systemPrompt: workflow.systemPrompt,
+      allowedTools: ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep', 'WebSearch', 'WebFetch', 'TodoWrite'],
+      maxTurns: 20
+    })) {
+      const data = `data: ${JSON.stringify(chunk)}\n\n`;
+      res.write(data);
+    }
+
+    clearInterval(heartbeatInterval);
+    if (!res.writableEnded) {
+      res.end();
+    }
+    console.log('[WORKFLOW RUN] Completed');
+  } catch (error) {
+    clearInterval(heartbeatInterval);
+    console.error('[WORKFLOW RUN] Error:', error);
+    res.write(`data: ${JSON.stringify({ type: 'error', message: error.message })}\n\n`);
+    res.end();
+  }
 });
 
 await initializeProviders();

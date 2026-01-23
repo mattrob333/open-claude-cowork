@@ -72,5 +72,76 @@ contextBridge.exposeInMainWorld('electronAPI', {
       console.error('[PRELOAD] Error fetching providers:', error);
       return { providers: ['claude'], default: 'claude' };
     }
+  },
+
+  // Get all workflows
+  getWorkflows: async () => {
+    try {
+      const response = await fetch(`${SERVER_URL}/api/workflows`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return await response.json();
+    } catch (error) {
+      console.error('[PRELOAD] Error fetching workflows:', error);
+      return [];
+    }
+  },
+
+  // Save a new workflow
+  saveWorkflow: async (workflow) => {
+    const response = await fetch(`${SERVER_URL}/api/workflows`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(workflow)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  },
+
+  // Run a workflow
+  runWorkflow: async (workflowId, variables, provider = 'claude', model = null) => {
+    return new Promise((resolve, reject) => {
+      console.log('[PRELOAD] Running workflow:', workflowId);
+
+      fetch(`${SERVER_URL}/api/workflows/run`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ workflowId, variables, provider, model })
+      })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          resolve({
+            getReader: async function() {
+              const reader = response.body.getReader();
+              const decoder = new TextDecoder();
+              return {
+                read: async () => {
+                  const { done, value } = await reader.read();
+                  return {
+                    done,
+                    value: done ? undefined : decoder.decode(value, { stream: true })
+                  };
+                }
+              };
+            }
+          });
+        })
+        .catch(error => {
+          console.error('[PRELOAD] Workflow run error:', error);
+          reject(error);
+        });
+    });
   }
 });
