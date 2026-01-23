@@ -207,7 +207,7 @@
   - Test: List files, export Google Docs
   - Commit: `feat: add Google Drive connector`
 
-- [ ] **2.7.4: Sync Service**
+- [x] **2.7.4: Sync Service**
   - Spec Ref: Build Plan → Phase 2.7 → Epic 4
   - Create: `server/lib/sync-service.js`
   - Test: Sync detects new/changed files
