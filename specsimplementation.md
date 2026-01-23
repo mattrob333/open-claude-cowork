@@ -201,7 +201,7 @@
   - Test: List and download files via Composio
   - Commit: `feat: add SharePoint connector`
 
-- [ ] **2.7.3: Google Drive Connector**
+- [x] **2.7.3: Google Drive Connector**
   - Spec Ref: Build Plan → Phase 2.7 → Epic 3
   - Create: `server/lib/connectors/google-drive.js`
   - Test: List files, export Google Docs
