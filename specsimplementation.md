@@ -155,7 +155,7 @@
   - Test: POST upload → GET list → GET single
   - Commit: `feat: add document upload API`
 
-- [ ] **2.5.5: Supabase Schema**
+- [x] **2.5.5: Supabase Schema**
   - Spec Ref: Build Plan → Phase 2.5 → Epic 5
   - Create: `scripts/setup_supabase.sql`
   - Test: Tables created, RLS policies applied
