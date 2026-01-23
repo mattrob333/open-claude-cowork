@@ -195,7 +195,7 @@
   - Test: source_files, processing_queue tables exist
   - Commit: `feat: add enterprise connector schema`
 
-- [ ] **2.7.2: SharePoint Connector**
+- [x] **2.7.2: SharePoint Connector**
   - Spec Ref: Build Plan → Phase 2.7 → Epic 2
   - Create: `server/lib/connectors/sharepoint.js`
   - Test: List and download files via Composio
