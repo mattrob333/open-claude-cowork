@@ -165,7 +165,7 @@
 
 ## Phase 2.6: Agent Browser
 
-- [ ] **2.6.1: Browser CLI Wrapper**
+- [x] **2.6.1: Browser CLI Wrapper**
   - Spec Ref: Build Plan → Phase 2.6 → Epic 1
   - Create: `server/lib/agent-browser.js`
   - Test: `navigate`, `click`, `screenshot` work
