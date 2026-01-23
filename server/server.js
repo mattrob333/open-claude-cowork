@@ -11,6 +11,7 @@ import {
   validateWorkflowCreate,
   validateWorkflowRun
 } from './middleware/validation.js';
+import logger from './lib/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -29,17 +30,17 @@ let defaultComposioSession = null;
 // Pre-initialize Composio session on startup
 async function initializeComposioSession() {
   const defaultUserId = 'default-user';
-  console.log('[COMPOSIO] Pre-initializing session for:', defaultUserId);
+  logger.composio.info({ userId: defaultUserId }, 'Pre-initializing session');
   try {
     defaultComposioSession = await composio.create(defaultUserId);
     composioSessions.set(defaultUserId, defaultComposioSession);
-    console.log('[COMPOSIO] Session ready with MCP URL:', defaultComposioSession.mcp.url);
+    logger.composio.info({ mcpUrl: defaultComposioSession.mcp.url }, 'Session ready');
 
     // Update opencode.json with the MCP config
     updateOpencodeConfig(defaultComposioSession.mcp.url, defaultComposioSession.mcp.headers);
-    console.log('[OPENCODE] Updated opencode.json with MCP config');
+    logger.provider.info('Updated opencode.json with MCP config');
   } catch (error) {
-    console.error('[COMPOSIO] Failed to pre-initialize session:', error.message);
+    logger.composio.error({ error: error.message }, 'Failed to pre-initialize session');
   }
 }
 
@@ -85,7 +86,7 @@ const corsOptions = {
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
-    console.warn(`[CORS] Blocked request from origin: ${origin}`);
+    logger.cors.warn({ origin }, 'Blocked request from origin');
     return callback(new Error(`Origin ${origin} not allowed by CORS policy`));
   },
   credentials: true,
@@ -97,6 +98,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 // Body size limit: 1MB max (rejects large payloads with 413)
 app.use(express.json({ limit: '1mb' }));
+app.use(logger.middleware);
 app.use(express.static(path.join(__dirname, '..', 'renderer')));
 
 app.get('/', (_req, res) => {
@@ -113,10 +115,12 @@ app.post('/api/chat', validateChatRequest, async (req, res) => {
     model = null  // Per-request model selection
   } = req.body;
 
-  console.log('[CHAT] Request received:', message.substring(0, 100) + (message.length > 100 ? '...' : ''));
-  console.log('[CHAT] Chat ID:', chatId);
-  console.log('[CHAT] Provider:', providerName);
-  console.log('[CHAT] Model:', model || '(default)');
+  logger.chat.info({
+    messagePreview: message.substring(0, 100) + (message.length > 100 ? '...' : ''),
+    chatId,
+    provider: providerName,
+    model: model || '(default)'
+  }, 'Chat request received');
 
   // Validate provider
   const availableProviders = getAvailableProviders();
@@ -148,15 +152,15 @@ app.post('/api/chat', validateChatRequest, async (req, res) => {
     // Get or create Composio session for this user
     let composioSession = composioSessions.get(userId);
     if (!composioSession) {
-      console.log('[COMPOSIO] Creating new session for user:', userId);
+      logger.composio.info({ userId }, 'Creating new session');
       res.write(`data: ${JSON.stringify({ type: 'status', message: 'Initializing session...' })}\n\n`);
       composioSession = await composio.create(userId);
       composioSessions.set(userId, composioSession);
-      console.log('[COMPOSIO] Session created with MCP URL:', composioSession.mcp.url);
+      logger.composio.info({ userId, mcpUrl: composioSession.mcp.url }, 'Session created');
 
       // Update opencode.json with the MCP config
       updateOpencodeConfig(composioSession.mcp.url, composioSession.mcp.headers);
-      console.log('[OPENCODE] Updated opencode.json with MCP config');
+      logger.provider.info('Updated opencode.json with MCP config');
     }
 
     // Get the provider instance
@@ -171,8 +175,7 @@ app.post('/api/chat', validateChatRequest, async (req, res) => {
       }
     };
 
-    console.log('[CHAT] Using provider:', provider.name);
-    console.log('[CHAT] All stored sessions:', Array.from(provider.sessions.entries()));
+    logger.chat.debug({ provider: provider.name, sessionCount: provider.sessions.size }, 'Using provider');
 
     // Stream responses from the provider
     try {
@@ -190,7 +193,7 @@ app.post('/api/chat', validateChatRequest, async (req, res) => {
         res.write(data);
       }
     } catch (streamError) {
-      console.error('[CHAT] Stream error during iteration:', streamError);
+      logger.chat.error({ error: streamError.message, chatId }, 'Stream error during iteration');
       if (!res.writableEnded) {
         res.write(`data: ${JSON.stringify({ type: 'error', message: streamError.message })}\n\n`);
       }
@@ -200,10 +203,10 @@ app.post('/api/chat', validateChatRequest, async (req, res) => {
     if (!res.writableEnded) {
       res.end();
     }
-    console.log('[CHAT] Stream completed');
+    logger.chat.info({ chatId }, 'Stream completed');
   } catch (error) {
     clearInterval(heartbeatInterval);
-    console.error('[CHAT] Error:', error);
+    logger.chat.error({ error: error.message, chatId }, 'Chat error');
     res.write(`data: ${JSON.stringify({ type: 'error', message: error.message })}\n\n`);
     res.end();
   }
@@ -237,7 +240,7 @@ function loadWorkflows() {
     }
     return JSON.parse(fs.readFileSync(workflowsPath, 'utf8'));
   } catch (error) {
-    console.error('[WORKFLOWS] Error loading workflows:', error);
+    logger.workflow.error({ error: error.message }, 'Error loading workflows');
     return { workflows: [] };
   }
 }
@@ -246,7 +249,7 @@ function saveWorkflows(data) {
   try {
     fs.writeFileSync(workflowsPath, JSON.stringify(data, null, 2));
   } catch (error) {
-    console.error('[WORKFLOWS] Error saving workflows:', error);
+    logger.workflow.error({ error: error.message }, 'Error saving workflows');
     throw error;
   }
 }
@@ -274,7 +277,7 @@ app.post('/api/workflows', validateWorkflowCreate, (req, res) => {
 
   data.workflows.push(workflow);
   saveWorkflows(data);
-  console.log('[WORKFLOWS] Created workflow:', workflow.id);
+  logger.workflow.info({ workflowId: workflow.id, name: workflow.name }, 'Workflow created');
 
   res.json(workflow);
 });
@@ -289,9 +292,11 @@ app.post('/api/workflows/run', validateWorkflowRun, async (req, res) => {
     userId = 'default-user'
   } = req.body;
 
-  console.log('[WORKFLOW RUN] Workflow ID:', workflowId);
-  console.log('[WORKFLOW RUN] Variables:', variables);
-  console.log('[WORKFLOW RUN] Provider:', providerName);
+  logger.workflow.info({
+    workflowId,
+    variables,
+    provider: providerName
+  }, 'Workflow run started');
 
   const workflows = loadWorkflows().workflows;
   const workflow = workflows.find(w => w.id === workflowId);
@@ -306,7 +311,7 @@ app.post('/api/workflows/run', validateWorkflowRun, async (req, res) => {
     prompt = prompt.replace(new RegExp(`{{${key}}}`, 'g'), value);
   }
 
-  console.log('[WORKFLOW RUN] Interpolated prompt:', prompt.substring(0, 200) + '...');
+  logger.workflow.debug({ promptPreview: prompt.substring(0, 200) }, 'Interpolated prompt');
 
   // Set up SSE response
   res.setHeader('Content-Type', 'text/event-stream');
@@ -367,10 +372,10 @@ app.post('/api/workflows/run', validateWorkflowRun, async (req, res) => {
     if (!res.writableEnded) {
       res.end();
     }
-    console.log('[WORKFLOW RUN] Completed');
+    logger.workflow.info({ workflowId }, 'Workflow run completed');
   } catch (error) {
     clearInterval(heartbeatInterval);
-    console.error('[WORKFLOW RUN] Error:', error);
+    logger.workflow.error({ error: error.message, workflowId }, 'Workflow run error');
     res.write(`data: ${JSON.stringify({ type: 'error', message: error.message })}\n\n`);
     res.end();
   }
@@ -381,23 +386,27 @@ await initializeComposioSession();
 
 // Start server and keep reference to prevent garbage collection
 const server = app.listen(PORT, () => {
-  console.log(`\n✓ Backend server running on http://localhost:${PORT}`);
-  console.log(`✓ Chat endpoint: POST http://localhost:${PORT}/api/chat`);
-  console.log(`✓ Providers endpoint: GET http://localhost:${PORT}/api/providers`);
-  console.log(`✓ Health check: GET http://localhost:${PORT}/api/health`);
-  console.log(`✓ Available providers: ${getAvailableProviders().join(', ')}\n`);
+  logger.server.info({
+    port: PORT,
+    endpoints: {
+      chat: `POST http://localhost:${PORT}/api/chat`,
+      providers: `GET http://localhost:${PORT}/api/providers`,
+      health: `GET http://localhost:${PORT}/api/health`
+    },
+    availableProviders: getAvailableProviders()
+  }, 'Server started');
 });
 
 // Keep the process alive
 server.on('error', (err) => {
-  console.error('Server error:', err);
+  logger.server.error({ error: err.message }, 'Server error');
 });
 
 // Prevent the process from exiting
 process.on('SIGINT', () => {
-  console.log('\nShutting down server...');
+  logger.server.info('Shutting down server...');
   server.close(() => {
-    console.log('Server closed');
+    logger.server.info('Server closed');
     process.exit(0);
   });
 });
