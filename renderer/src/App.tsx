@@ -4,6 +4,7 @@ import ChatArea from './components/ChatArea';
 import AgentStudio from './components/AgentStudio';
 import RunWorkflowModal from './components/RunWorkflowModal';
 import WorkflowWizard from './components/WorkflowWizard';
+import ErrorBoundary from './components/ErrorBoundary';
 import { Session, Message, Role, ToolLogEntry, KnowledgeAsset, ModelOption, WorkflowTemplate } from './types';
 import { MODELS, SERVER_URL } from './constants';
 import { streamChat } from './services/chatService';
@@ -250,42 +251,50 @@ function App() {
     <div className="h-screen flex overflow-hidden bg-canvas">
       {/* Left Sidebar - Sessions & Knowledge Base */}
       <div className="w-72 shrink-0">
-        <Sidebar
-          sessions={sessions}
-          activeId={activeSessionId}
-          onSelect={handleSelectSession}
-          onCreate={handleCreateSession}
-          assets={knowledgeAssets}
-          onToggleAsset={handleToggleAsset}
-        />
+        <ErrorBoundary name="Sidebar">
+          <Sidebar
+            sessions={sessions}
+            activeId={activeSessionId}
+            onSelect={handleSelectSession}
+            onCreate={handleCreateSession}
+            assets={knowledgeAssets}
+            onToggleAsset={handleToggleAsset}
+          />
+        </ErrorBoundary>
       </div>
 
       {/* Main Chat Area */}
-      <ChatArea
-        session={currentSession}
-        messages={currentMessages}
-        onSend={handleSend}
-        isTyping={isTyping}
-        currentModel={currentModel}
-        onModelChange={setCurrentModel}
-        onSaveWorkflow={handleSaveWorkflow}
-      />
+      <ErrorBoundary name="Chat">
+        <ChatArea
+          session={currentSession}
+          messages={currentMessages}
+          onSend={handleSend}
+          isTyping={isTyping}
+          currentModel={currentModel}
+          onModelChange={setCurrentModel}
+          onSaveWorkflow={handleSaveWorkflow}
+        />
+      </ErrorBoundary>
 
       {/* Right Sidebar - Agent Studio */}
       {showWorkflowWizard ? (
         <div className="w-80 shrink-0">
-          <WorkflowWizard
-            onClose={() => setShowWorkflowWizard(false)}
-            onSave={handleSaveWorkflowComplete}
-          />
+          <ErrorBoundary name="WorkflowWizard">
+            <WorkflowWizard
+              onClose={() => setShowWorkflowWizard(false)}
+              onSave={handleSaveWorkflowComplete}
+            />
+          </ErrorBoundary>
         </div>
       ) : (
         <div className="w-80 shrink-0">
-          <AgentStudio
-            toolLogs={toolLogs}
-            onClear={handleClearLogs}
-            onSelectWorkflow={handleSelectWorkflow}
-          />
+          <ErrorBoundary name="AgentStudio">
+            <AgentStudio
+              toolLogs={toolLogs}
+              onClear={handleClearLogs}
+              onSelectWorkflow={handleSelectWorkflow}
+            />
+          </ErrorBoundary>
         </div>
       )}
 
