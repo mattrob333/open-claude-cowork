@@ -55,9 +55,9 @@
   - Test: Send 10MB message → expect 413; send invalid chatId → expect 400
   - Commit: `fix: add input validation and request limits`
 
-- [ ] **0.3: Add CORS Restrictions**
+- [x] **0.3: Add CORS Restrictions**
   - Spec Ref: Build Plan → Phase 0 → 0.3
-  - File: `server/server.js` (line 57)
+  - File: `server/server.js` (lines 61-97)
   - Action: Replace `cors()` with origin whitelist
   - Test: Request from unknown origin → CORS error
   - Commit: `fix: restrict CORS to known origins`
