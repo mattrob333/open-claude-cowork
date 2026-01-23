@@ -147,3 +147,113 @@ export async function checkHealth(): Promise<{ status: string; timestamp: string
   }
   return await response.json();
 }
+
+// Document API types
+export interface DocumentInfo {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  status: 'pending' | 'processing' | 'ready' | 'error';
+  uploadedAt: number;
+  processedAt: number | null;
+  chunksCount: number;
+  error?: string;
+}
+
+export interface DocumentListResponse {
+  documents: DocumentInfo[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+/**
+ * Upload a document to the server
+ */
+export async function uploadDocument(file: File): Promise<DocumentInfo> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${SERVER_URL}/api/documents/upload`, {
+    method: 'POST',
+    body: formData
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: 'Upload failed' }));
+    throw new Error(error.message || error.error || `HTTP error! status: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Get list of all documents
+ */
+export async function getDocuments(options?: {
+  status?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<DocumentListResponse> {
+  const params = new URLSearchParams();
+  if (options?.status) params.append('status', options.status);
+  if (options?.limit) params.append('limit', options.limit.toString());
+  if (options?.offset) params.append('offset', options.offset.toString());
+
+  const url = params.toString()
+    ? `${SERVER_URL}/api/documents?${params}`
+    : `${SERVER_URL}/api/documents`;
+
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Get a single document by ID
+ */
+export async function getDocument(id: string): Promise<DocumentInfo> {
+  const response = await fetch(`${SERVER_URL}/api/documents/${id}`);
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Get a signed URL for viewing/downloading a document
+ */
+export async function getDocumentUrl(id: string, expiresIn = 3600): Promise<{ url: string; expiresIn: number }> {
+  const response = await fetch(`${SERVER_URL}/api/documents/${id}/url?expiresIn=${expiresIn}`);
+
+  if (!response.ok) {
+    if (response.status === 501) {
+      throw new Error('Document URLs require Supabase storage to be configured');
+    }
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Delete a document
+ */
+export async function deleteDocument(id: string): Promise<{ success: boolean; id: string }> {
+  const response = await fetch(`${SERVER_URL}/api/documents/${id}`, {
+    method: 'DELETE'
+  });
+
+  if (!response.ok) {
+    throw new Error(`HTTP error! status: ${response.status}`);
+  }
+
+  return await response.json();
+}

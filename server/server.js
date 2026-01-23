@@ -466,7 +466,8 @@ app.post('/api/workflows/run', validateWorkflowRun, async (req, res) => {
 });
 
 // SPA fallback - serve index.html for all non-API routes (must be AFTER all API routes)
-app.get('*', (req, res) => {
+// Express 5 requires named wildcard parameter: /{*path} or (/.*)
+app.get('/{*path}', (req, res) => {
   const indexPath = isProduction
     ? path.join(__dirname, '..', 'renderer', 'dist', 'index.html')
     : path.join(__dirname, '..', 'renderer', 'index.html');

@@ -9,8 +9,7 @@ import ToolConnections from './components/ToolConnections';
 import DocumentPreview from './components/DocumentPreview';
 import { Session, Message, Role, ToolLogEntry, KnowledgeAsset, ModelOption, WorkflowTemplate } from './types';
 import { MODELS } from './constants';
-import { streamChat } from './services/chatService';
-import { supabase } from './lib/supabase';
+import { streamChat, uploadDocument, getDocuments, getDocumentUrl } from './services/chatService';
 
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
@@ -120,6 +119,37 @@ function App() {
   const currentSession = sessions.find(s => s.id === activeSessionId);
   const currentMessages = activeSessionId ? (messagesBySession[activeSessionId] || []) : [];
 
+  // Load documents from backend on mount
+  useEffect(() => {
+    const loadDocuments = async () => {
+      try {
+        const response = await getDocuments({ status: 'ready' });
+        const formatSize = (bytes: number): string => {
+          if (bytes >= 1024 * 1024) {
+            return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+          } else if (bytes >= 1024) {
+            return `${(bytes / 1024).toFixed(0)} KB`;
+          }
+          return `${bytes} B`;
+        };
+
+        const assets: KnowledgeAsset[] = response.documents.map(doc => ({
+          id: doc.id,
+          name: doc.name,
+          type: doc.type,
+          size: formatSize(doc.size),
+          isActive: true,
+        }));
+
+        setKnowledgeAssets(assets);
+      } catch (err) {
+        console.error('Error loading documents:', err);
+      }
+    };
+
+    loadDocuments();
+  }, []);
+
   // Create new session
   const handleCreateSession = useCallback(() => {
     const newSession: Session = {
@@ -146,7 +176,7 @@ function App() {
     );
   }, []);
 
-  // Upload file to knowledge base
+  // Upload file to knowledge base via backend API
   const handleUploadFile = useCallback(async (file: File) => {
     const formatSize = (bytes: number): string => {
       if (bytes >= 1024 * 1024) {
@@ -157,19 +187,23 @@ function App() {
       return `${bytes} B`;
     };
 
-    const getFileType = (name: string): string => {
-      return name.split('.').pop()?.toLowerCase() || 'file';
-    };
+    try {
+      // Upload to backend (which handles Supabase storage + database)
+      const doc = await uploadDocument(file);
 
-    const newAsset: KnowledgeAsset = {
-      id: generateId(),
-      name: file.name,
-      type: getFileType(file.name),
-      size: formatSize(file.size),
-      isActive: true,
-    };
+      const newAsset: KnowledgeAsset = {
+        id: doc.id,
+        name: doc.name,
+        type: doc.type,
+        size: formatSize(doc.size),
+        isActive: true,
+      };
 
-    setKnowledgeAssets(prev => [...prev, newAsset]);
+      setKnowledgeAssets(prev => [...prev, newAsset]);
+    } catch (error) {
+      console.error('Error uploading document:', error);
+      throw error; // Re-throw to let Sidebar show error state
+    }
   }, []);
 
   // Send message
@@ -420,20 +454,9 @@ function App() {
     setPreviewDocument({ asset, url: null, isLoading: true });
 
     try {
-      // Try to get a signed URL from Supabase storage
-      // The path format is: {user_id}/{document_id}/{filename}
-      // For now, we'll use the asset.id as the document_id
-      const { data, error } = await supabase.storage
-        .from('documents')
-        .createSignedUrl(`${asset.id}/${asset.name}`, 3600);
-
-      if (error) {
-        console.error('Error getting document URL:', error);
-        // Fallback: try to create a blob URL from the local file if available
-        setPreviewDocument(prev => prev ? { ...prev, isLoading: false } : null);
-      } else {
-        setPreviewDocument(prev => prev ? { ...prev, url: data.signedUrl, isLoading: false } : null);
-      }
+      // Get signed URL from backend API
+      const { url } = await getDocumentUrl(asset.id);
+      setPreviewDocument(prev => prev ? { ...prev, url, isLoading: false } : null);
     } catch (err) {
       console.error('Error loading document:', err);
       setPreviewDocument(prev => prev ? { ...prev, isLoading: false } : null);
