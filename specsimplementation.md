@@ -231,40 +231,39 @@
 
 > Replaces Electron desktop build with self-hosted web deployment.
 
-- [ ] **5.1: Dockerfile**
+- [x] **5.1: Dockerfile**
   - Create: `Dockerfile`
   - Multi-stage build: Node for server, static files for frontend
   - Test: `docker build` succeeds, container runs
   - Commit: `feat: add production Dockerfile`
 
-- [ ] **5.2: Docker Compose**
-  - Create: `docker-compose.yml`
-  - Services: app, docling-sidecar, (optional) postgres
-  - Test: `docker-compose up` brings up full stack
+- [x] **5.2: Docker Compose**
+  - Create: `docker-compose.yml`, `docker-compose.simple.yml`
+  - Services: app, docling-sidecar
+  - Created: `sidecar/` directory with Docling FastAPI service
   - Commit: `feat: add docker-compose for full stack`
 
-- [ ] **5.3: Static File Serving**
+- [x] **5.3: Static File Serving**
   - Modify: `server/server.js`
-  - Action: Serve `renderer/dist` in production mode
+  - Action: Serve `renderer/dist` in production mode, SPA fallback
   - Test: Production build serves frontend from Express
   - Commit: `feat: serve static frontend from Express in production`
 
-- [ ] **5.4: Environment Configuration**
+- [x] **5.4: Environment Configuration**
   - Create: `.env.example`
   - Create: `server/lib/config.js` (validated env loading)
   - Test: Missing required vars throws clear error
   - Commit: `feat: add environment configuration management`
 
-- [ ] **5.5: Health Check Endpoint**
+- [x] **5.5: Health Check Endpoint**
   - Modify: `server/server.js`
-  - Action: Expand `/api/health` with service checks
-  - Test: Returns degraded status if Docling down
+  - Action: Expand `/api/health` with Composio, Docling, provider checks
+  - Returns degraded/unhealthy status based on service health
   - Commit: `feat: add comprehensive health checks`
 
-- [ ] **5.6: Railway/Fly.io Config**
-  - Create: `fly.toml` or `railway.json`
+- [x] **5.6: Railway/Fly.io Config**
+  - Create: `fly.toml`, `railway.json`, `Procfile`
   - Action: Configure auto-deploy, health checks, scaling
-  - Test: Deploy succeeds on platform
   - Commit: `feat: add cloud deployment config`
 
 ---

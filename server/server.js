@@ -151,11 +151,16 @@ app.use(cors(corsOptions));
 // Body size limit: 1MB max (rejects large payloads with 413)
 app.use(express.json({ limit: '1mb' }));
 app.use(logger.middleware);
-app.use(express.static(path.join(__dirname, '..', 'renderer')));
 
-app.get('/', (_req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'renderer', 'index.html'));
-});
+// Static file serving
+// In production (NODE_ENV=production), serve built frontend from renderer/dist
+// In development, serve from renderer root (Vite dev server handles this usually)
+const isProduction = process.env.NODE_ENV === 'production';
+const staticPath = isProduction
+  ? path.join(__dirname, '..', 'renderer', 'dist')
+  : path.join(__dirname, '..', 'renderer');
+
+app.use(express.static(staticPath));
 
 // Chat endpoint using provider abstraction
 app.post('/api/chat', validateChatRequest, async (req, res) => {
@@ -272,12 +277,81 @@ app.get('/api/providers', (_req, res) => {
   });
 });
 
-// Health check endpoint
-app.get('/api/health', (_req, res) => {
-  res.json({
-    status: 'ok',
+// Health check endpoint with comprehensive service checks
+app.get('/api/health', async (_req, res) => {
+  const startTime = Date.now();
+  const checks = {
+    server: { status: 'healthy' },
+    composio: { status: 'unknown' },
+    docling: { status: 'unknown' },
+    providers: { status: 'unknown', available: [] }
+  };
+
+  // Check Composio session
+  try {
+    const hasSession = defaultComposioSession !== null || composioSessions.size > 0;
+    checks.composio = {
+      status: hasSession ? 'healthy' : 'degraded',
+      activeSessions: composioSessions.size,
+      message: hasSession ? 'Session available' : 'No active sessions'
+    };
+  } catch (error) {
+    checks.composio = { status: 'unhealthy', error: error.message };
+  }
+
+  // Check Docling sidecar (if configured)
+  const doclingUrl = process.env.DOCLING_URL;
+  if (doclingUrl) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
+      const response = await fetch(`${doclingUrl}/health`, { signal: controller.signal });
+      clearTimeout(timeout);
+      checks.docling = {
+        status: response.ok ? 'healthy' : 'degraded',
+        url: doclingUrl
+      };
+    } catch (error) {
+      checks.docling = {
+        status: 'unhealthy',
+        url: doclingUrl,
+        error: error.name === 'AbortError' ? 'Timeout' : error.message
+      };
+    }
+  } else {
+    checks.docling = { status: 'not_configured' };
+  }
+
+  // Check providers
+  try {
+    const available = getAvailableProviders();
+    checks.providers = {
+      status: available.length > 0 ? 'healthy' : 'degraded',
+      available,
+      count: available.length
+    };
+  } catch (error) {
+    checks.providers = { status: 'unhealthy', error: error.message };
+  }
+
+  // Determine overall status
+  const statuses = Object.values(checks).map(c => c.status);
+  let overallStatus = 'healthy';
+  if (statuses.includes('unhealthy')) {
+    overallStatus = 'unhealthy';
+  } else if (statuses.includes('degraded')) {
+    overallStatus = 'degraded';
+  }
+
+  const responseTime = Date.now() - startTime;
+
+  res.status(overallStatus === 'unhealthy' ? 503 : 200).json({
+    status: overallStatus,
     timestamp: new Date().toISOString(),
-    providers: getAvailableProviders()
+    responseTimeMs: responseTime,
+    version: '1.0.0',
+    environment: process.env.NODE_ENV || 'development',
+    checks
   });
 });
 
@@ -389,6 +463,14 @@ app.post('/api/workflows/run', validateWorkflowRun, async (req, res) => {
     res.write(`data: ${JSON.stringify({ type: 'error', message: error.message })}\n\n`);
     res.end();
   }
+});
+
+// SPA fallback - serve index.html for all non-API routes (must be AFTER all API routes)
+app.get('*', (req, res) => {
+  const indexPath = isProduction
+    ? path.join(__dirname, '..', 'renderer', 'dist', 'index.html')
+    : path.join(__dirname, '..', 'renderer', 'index.html');
+  res.sendFile(indexPath);
 });
 
 await initializeProviders();

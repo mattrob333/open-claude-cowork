@@ -1,0 +1,90 @@
+# Open Claude Cowork - Docker Compose
+# Full stack deployment with optional Docling sidecar
+
+version: '3.8'
+
+services:
+  # ============================================
+  # Main Application
+  # ============================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${PORT:-3001}:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - COMPOSIO_API_KEY=${COMPOSIO_API_KEY}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3001}
+      - DOCLING_URL=http://docling:8765
+      - SUPABASE_URL=${SUPABASE_URL:-}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-}
+      - SUPABASE_SERVICE_KEY=${SUPABASE_SERVICE_KEY:-}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    volumes:
+      - app-data:/app/data
+      - app-logs:/app/logs
+    depends_on:
+      docling:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - cowork-network
+
+  # ============================================
+  # Docling Sidecar (Document Processing)
+  # ============================================
+  docling:
+    build:
+      context: ./sidecar
+      dockerfile: Dockerfile
+    ports:
+      - "${DOCLING_PORT:-8765}:8765"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    volumes:
+      - docling-cache:/app/cache
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8765/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - cowork-network
+    # Resource limits for document processing
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 512M
+
+# ============================================
+# Networks
+# ============================================
+networks:
+  cowork-network:
+    driver: bridge
+
+# ============================================
+# Volumes
+# ============================================
+volumes:
+  app-data:
+    driver: local
+  app-logs:
+    driver: local
+  docling-cache:
+    driver: local
