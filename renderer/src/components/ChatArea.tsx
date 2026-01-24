@@ -377,11 +377,11 @@ const ChatArea: React.FC<ChatAreaProps> = ({
         </div>
         
         <div className="flex items-center gap-3">
-          {/* Save Workflow Button - triggers workflow extraction in chat */}
+          {/* Save Workflow Button - opens WorkflowWizard with conversation content */}
           <button
             onClick={() => {
-              // Send a message that triggers workflow extraction via A2UI
-              onSend('[WORKFLOW_CAPTURE] Please analyze this conversation and extract it as a reusable workflow. Show me the workflow details for approval.');
+              // Call the save workflow handler which opens the wizard
+              onSaveWorkflow();
             }}
             disabled={messages.length < 2 || isTyping}
             className="flex items-center gap-2 bg-accent/10 border border-accent/20 px-4 py-1.5 rounded-full text-[11px] font-bold text-accent hover:bg-accent hover:text-canvas transition-all group disabled:opacity-50 disabled:cursor-not-allowed"

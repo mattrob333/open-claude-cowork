@@ -600,14 +600,31 @@ function App() {
     setSelectedWorkflow(null);
   }, [selectedWorkflow, handleSend]);
 
-  // Save workflow
+  // Save workflow - extracts conversation and opens wizard
   const handleSaveWorkflow = useCallback(() => {
     setShowWorkflowWizard(true);
   }, []);
 
+  // Get conversation content for workflow wizard
+  const getConversationAsPrompt = useCallback(() => {
+    if (!activeSessionId) return '';
+    const msgs = messagesBySession[activeSessionId] || [];
+    // Format conversation as a prompt template
+    const formatted = msgs.map(m => {
+      if (m.role === Role.USER) {
+        return `User: ${m.content}`;
+      } else {
+        return `Assistant: ${m.content}`;
+      }
+    }).join('\n\n');
+    return `Based on this conversation, perform the following task:\n\n${formatted}`;
+  }, [activeSessionId, messagesBySession]);
+
   const handleSaveWorkflowComplete = useCallback((name: string) => {
-    console.log('Saving workflow:', name);
+    console.log('Workflow saved:', name);
     setShowWorkflowWizard(false);
+    // The workflow is now saved to localStorage and will appear in the sidebar
+    // via the 'workflow-created' event listener in WorkflowPanel
   }, []);
 
   // Workflow capture A2UI handlers
@@ -787,6 +804,7 @@ function App() {
                 if (isMobile) setShowRightDrawer(false);
               }}
               onSave={handleSaveWorkflowComplete}
+              initialPrompt={getConversationAsPrompt()}
             />
           </ErrorBoundary>
         </div>

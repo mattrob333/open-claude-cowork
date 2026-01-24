@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { ICONS } from '../constants';
 import { WorkflowVariable } from '../types';
-import { saveWorkflow } from '../services/chatService';
+import { saveWorkflow as saveWorkflowToStorage } from '../lib/workflowStorage';
+import { Workflow } from '../types/workflow';
 import { extractServicesFromPrompt } from '../utils/serviceExtractor';
 import { WorkflowServiceLogosInline } from './WorkflowServiceLogos';
 
@@ -56,7 +57,7 @@ const WorkflowWizard: React.FC<WorkflowWizardProps> = ({ onClose, onSave, initia
     );
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!name.trim() || !systemPrompt.trim()) {
       setError('Name and system prompt are required');
       return;
@@ -69,14 +70,35 @@ const WorkflowWizard: React.FC<WorkflowWizardProps> = ({ onClose, onSave, initia
       // Auto-detect services from the system prompt
       const detectedServices = extractServicesFromPrompt(systemPrompt);
 
-      await saveWorkflow({
+      // Create workflow object for localStorage
+      const workflow: Workflow = {
+        id: `wf_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         name: name.trim(),
         description: description.trim(),
-        systemPrompt: systemPrompt.trim(),
-        variables,
-        icon: 'chat',
-        usedServices: detectedServices
-      });
+        icon: '📋',
+        status: 'active',
+        goldenInstructions: systemPrompt.trim(),
+        steps: [], // Could extract from prompt later
+        variables: variables.map((v, i) => ({
+          id: `var_${i}`,
+          key: v.name,
+          name: v.label,
+          type: v.type as 'string' | 'number' | 'boolean' | 'select' | 'multiline',
+          required: v.required || false,
+          options: v.options,
+          defaultValue: v.placeholder
+        })),
+        tags: detectedServices,
+        runCount: 0,
+        isFavorite: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      // Save to localStorage (this dispatches 'workflow-created' event)
+      saveWorkflowToStorage(workflow);
+
+      console.log('Workflow saved to localStorage:', workflow);
       onSave(name);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save workflow');
