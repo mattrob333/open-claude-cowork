@@ -49,6 +49,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   const scrollRef = useRef<HTMLDivElement>(null);
   const contextChipsRef = useRef<ContextChipsHandle>(null);
   const modelDropdownRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Close model dropdown when clicking outside
   useEffect(() => {
@@ -115,6 +116,10 @@ const ChatArea: React.FC<ChatAreaProps> = ({
     if (inputText.trim() && !isTyping) {
       onSend(inputText);
       setInputText('');
+      // Reset textarea height after submit
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto';
+      }
     }
   };
 
@@ -392,6 +397,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
             <ICONS.Plus />
           </button>
           <textarea
+            ref={textareaRef}
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={handleKeyDown}
