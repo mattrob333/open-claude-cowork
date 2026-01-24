@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Session, KnowledgeAsset } from '../types';
 import { ICONS } from '../constants';
 import { DocumentCard } from './DocumentPreview';
@@ -28,6 +28,8 @@ interface SidebarProps {
   activeId: string | null;
   onSelect: (id: string) => void;
   onCreate: () => void;
+  onRenameSession?: (id: string, newTitle: string) => void;
+  onDeleteSession?: (id: string) => void;
   assets: KnowledgeAsset[];
   onToggleAsset: (id: string) => void;
   onUploadFile?: (file: File) => Promise<void>;
@@ -39,6 +41,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   activeId,
   onSelect,
   onCreate,
+  onRenameSession,
+  onDeleteSession,
   assets,
   onToggleAsset,
   onUploadFile,
@@ -47,6 +51,70 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Session menu state
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState('');
+  const editInputRef = useRef<HTMLInputElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpenMenuId(null);
+      }
+    };
+    if (openMenuId) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [openMenuId]);
+
+  // Focus input when editing starts
+  useEffect(() => {
+    if (editingSessionId && editInputRef.current) {
+      editInputRef.current.focus();
+      editInputRef.current.select();
+    }
+  }, [editingSessionId]);
+
+  // Handle rename
+  const handleStartRename = (session: Session) => {
+    setEditingSessionId(session.id);
+    setEditingTitle(session.title);
+    setOpenMenuId(null);
+  };
+
+  const handleSaveRename = () => {
+    if (editingSessionId && editingTitle.trim() && onRenameSession) {
+      onRenameSession(editingSessionId, editingTitle.trim());
+    }
+    setEditingSessionId(null);
+    setEditingTitle('');
+  };
+
+  const handleCancelRename = () => {
+    setEditingSessionId(null);
+    setEditingTitle('');
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSaveRename();
+    } else if (e.key === 'Escape') {
+      handleCancelRename();
+    }
+  };
+
+  // Handle delete
+  const handleDelete = (id: string) => {
+    if (onDeleteSession) {
+      onDeleteSession(id);
+    }
+    setOpenMenuId(null);
+  };
 
   // Validate file
   const validateFile = (file: File): string | null => {
@@ -168,14 +236,73 @@ const Sidebar: React.FC<SidebarProps> = ({
             sessions.map(session => (
               <div
                 key={session.id}
-                onClick={() => onSelect(session.id)}
-                className={`flex items-center gap-2.5 mx-3 my-1 px-4 py-3 rounded-xl cursor-pointer transition-all text-sm
+                className={`group relative flex items-center gap-2.5 mx-3 my-1 px-4 py-3 rounded-xl cursor-pointer transition-all text-sm
                   ${activeId === session.id
                     ? 'bg-card text-primaryText border border-border shadow-md'
                     : 'text-secondaryText hover:bg-hover hover:text-primaryText'}`}
               >
-                <ICONS.MessageSquare />
-                <span className="truncate flex-1 font-medium">{session.title}</span>
+                {editingSessionId === session.id ? (
+                  // Inline edit mode
+                  <>
+                    <ICONS.MessageSquare />
+                    <input
+                      ref={editInputRef}
+                      type="text"
+                      value={editingTitle}
+                      onChange={(e) => setEditingTitle(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      onBlur={handleSaveRename}
+                      className="flex-1 bg-transparent border-b border-accent outline-none text-primaryText font-medium"
+                    />
+                  </>
+                ) : (
+                  // Normal display mode
+                  <>
+                    <div className="flex-1 flex items-center gap-2.5" onClick={() => onSelect(session.id)}>
+                      <ICONS.MessageSquare />
+                      <span className="truncate flex-1 font-medium">{session.title}</span>
+                    </div>
+
+                    {/* Three-dot menu button */}
+                    <div className="relative" ref={openMenuId === session.id ? menuRef : undefined}>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenuId(openMenuId === session.id ? null : session.id);
+                        }}
+                        className="p-1 opacity-0 group-hover:opacity-100 hover:bg-white/10 rounded transition-all"
+                      >
+                        <ICONS.MoreVertical />
+                      </button>
+
+                      {/* Dropdown menu */}
+                      {openMenuId === session.id && (
+                        <div className="absolute right-0 top-full mt-1 bg-[#2a2a2a] border border-border rounded-lg shadow-xl py-1 z-50 min-w-[120px]">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleStartRename(session);
+                            }}
+                            className="w-full px-3 py-2 text-left text-sm text-primaryText hover:bg-hover flex items-center gap-2"
+                          >
+                            <ICONS.Edit />
+                            Rename
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(session.id);
+                            }}
+                            className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-hover flex items-center gap-2"
+                          >
+                            <ICONS.Trash />
+                            Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             ))
           )}

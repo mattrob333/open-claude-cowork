@@ -186,6 +186,25 @@ function App() {
     setToolLogs([]);
   }, []);
 
+  // Rename session
+  const handleRenameSession = useCallback((id: string, newTitle: string) => {
+    setSessions(prev => prev.map(s =>
+      s.id === id ? { ...s, title: newTitle } : s
+    ));
+  }, []);
+
+  // Delete session
+  const handleDeleteSession = useCallback((id: string) => {
+    setSessions(prev => prev.filter(s => s.id !== id));
+    if (activeSessionId === id) {
+      setActiveSessionId(null);
+    }
+    setMessagesBySession(prev => {
+      const { [id]: removed, ...rest } = prev;
+      return rest;
+    });
+  }, [activeSessionId]);
+
   // Toggle knowledge asset
   const handleToggleAsset = useCallback((id: string) => {
     setKnowledgeAssets(prev =>
@@ -587,6 +606,8 @@ function App() {
             activeId={activeSessionId}
             onSelect={handleSelectSession}
             onCreate={handleCreateSession}
+            onRenameSession={handleRenameSession}
+            onDeleteSession={handleDeleteSession}
             assets={knowledgeAssets}
             onToggleAsset={handleToggleAsset}
             onUploadFile={handleUploadFile}
