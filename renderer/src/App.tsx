@@ -9,6 +9,7 @@ import ToolConnections from './components/ToolConnections';
 import DocumentPreview from './components/DocumentPreview';
 import KnowledgeBaseModal from './components/KnowledgeBaseModal';
 import ResizeHandle from './components/ResizeHandle';
+import { BottomNavigation, MobileHeader, type MobileView } from './components/mobile';
 import { Session, Message, Role, ToolLogEntry, KnowledgeAsset, ModelOption, WorkflowTemplate, EphemeralDocument } from './types';
 import { MODELS } from './constants';
 import { streamChat, uploadDocument, getDocuments, getDocumentUrl, ChatOptions } from './services/chatService';
@@ -126,6 +127,12 @@ function App() {
   // Knowledge base modal
   const [showKnowledgeBase, setShowKnowledgeBase] = useState(false);
 
+  // Mobile responsive state
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobileView, setMobileView] = useState<MobileView>('chat');
+  const [showLeftDrawer, setShowLeftDrawer] = useState(false);
+  const [showRightDrawer, setShowRightDrawer] = useState(false);
+
   // Skills state
   const [activeSkillIds, setActiveSkillIds] = useState<string[]>([]);
 
@@ -170,6 +177,24 @@ function App() {
 
     loadDocuments();
   }, []);
+
+  // Detect mobile viewport
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Close drawers when switching to desktop
+  useEffect(() => {
+    if (!isMobile) {
+      setShowLeftDrawer(false);
+      setShowRightDrawer(false);
+    }
+  }, [isMobile]);
 
   // Create new session
   const handleCreateSession = useCallback(() => {
@@ -602,65 +627,124 @@ function App() {
 
   return (
     <div className="h-screen flex overflow-hidden bg-canvas">
+      {/* Mobile Header */}
+      {isMobile && (
+        <MobileHeader
+          title={currentSession?.title || 'New Session'}
+          subtitle={currentModel.name}
+          onMenuClick={() => setShowLeftDrawer(true)}
+          onRightAction={() => setShowRightDrawer(true)}
+          rightActionIcon={<span className="text-accent"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg></span>}
+        />
+      )}
+
+      {/* Mobile Left Drawer Backdrop */}
+      {isMobile && (
+        <div
+          className={`mobile-backdrop ${showLeftDrawer ? 'mobile-backdrop-visible' : 'mobile-backdrop-hidden'}`}
+          onClick={() => setShowLeftDrawer(false)}
+        />
+      )}
+
       {/* Left Sidebar - Sessions & Knowledge Base */}
-      <div className="shrink-0 overflow-hidden" style={{ width: leftSidebarWidth }}>
+      <div
+        className={`${isMobile
+          ? `mobile-drawer-left ${showLeftDrawer ? 'mobile-drawer-left-open' : 'mobile-drawer-left-closed'}`
+          : 'shrink-0 overflow-hidden hidden md:block'}`}
+        style={!isMobile ? { width: leftSidebarWidth } : undefined}
+      >
         <ErrorBoundary name="Sidebar">
           <Sidebar
             sessions={sessions}
             activeId={activeSessionId}
-            onSelect={handleSelectSession}
-            onCreate={handleCreateSession}
+            onSelect={(id) => {
+              handleSelectSession(id);
+              if (isMobile) setShowLeftDrawer(false);
+            }}
+            onCreate={() => {
+              handleCreateSession();
+              if (isMobile) setShowLeftDrawer(false);
+            }}
             onRenameSession={handleRenameSession}
             onDeleteSession={handleDeleteSession}
             assets={knowledgeAssets}
             onToggleAsset={handleToggleAsset}
             onUploadFile={handleUploadFile}
             onViewDocument={handleViewDocument}
-            onOpenKnowledgeBase={() => setShowKnowledgeBase(true)}
+            onOpenKnowledgeBase={() => {
+              setShowKnowledgeBase(true);
+              if (isMobile) setShowLeftDrawer(false);
+            }}
           />
         </ErrorBoundary>
       </div>
 
-      {/* Left Resize Handle */}
-      <ResizeHandle onResize={handleLeftSidebarResize} position="left" />
+      {/* Left Resize Handle - Desktop only */}
+      {!isMobile && <ResizeHandle onResize={handleLeftSidebarResize} position="left" />}
 
       {/* Main Chat Area */}
-      <ErrorBoundary name="Chat">
-        <ChatArea
-          session={currentSession}
-          messages={currentMessages}
-          onSend={handleSend}
-          isTyping={isTyping}
-          currentModel={currentModel}
-          onModelChange={setCurrentModel}
-          onSaveWorkflow={handleSaveWorkflow}
-          ephemeralDocs={ephemeralDocs}
-          onAddEphemeralDoc={handleAddEphemeralDoc}
-          onRemoveEphemeralDoc={handleRemoveEphemeralDoc}
-          onToggleEphemeralDoc={handleToggleEphemeralDoc}
-        />
-      </ErrorBoundary>
+      <div className={`flex-1 flex flex-col ${isMobile ? 'pt-14 pb-16' : ''}`}>
+        <ErrorBoundary name="Chat">
+          <ChatArea
+            session={currentSession}
+            messages={currentMessages}
+            onSend={handleSend}
+            isTyping={isTyping}
+            currentModel={currentModel}
+            onModelChange={setCurrentModel}
+            onSaveWorkflow={handleSaveWorkflow}
+            ephemeralDocs={ephemeralDocs}
+            onAddEphemeralDoc={handleAddEphemeralDoc}
+            onRemoveEphemeralDoc={handleRemoveEphemeralDoc}
+            onToggleEphemeralDoc={handleToggleEphemeralDoc}
+          />
+        </ErrorBoundary>
+      </div>
 
-      {/* Right Resize Handle */}
-      <ResizeHandle onResize={handleRightSidebarResize} position="right" />
+      {/* Right Resize Handle - Desktop only */}
+      {!isMobile && <ResizeHandle onResize={handleRightSidebarResize} position="right" />}
+
+      {/* Mobile Right Drawer Backdrop */}
+      {isMobile && (
+        <div
+          className={`mobile-backdrop ${showRightDrawer ? 'mobile-backdrop-visible' : 'mobile-backdrop-hidden'}`}
+          onClick={() => setShowRightDrawer(false)}
+        />
+      )}
 
       {/* Right Sidebar - Agent Studio */}
       {showWorkflowWizard ? (
-        <div className="shrink-0 overflow-hidden" style={{ width: rightSidebarWidth }}>
+        <div
+          className={`${isMobile
+            ? `mobile-drawer-right ${showRightDrawer ? 'mobile-drawer-right-open' : 'mobile-drawer-right-closed'}`
+            : 'shrink-0 overflow-hidden hidden md:block'}`}
+          style={!isMobile ? { width: rightSidebarWidth } : undefined}
+        >
           <ErrorBoundary name="WorkflowWizard">
             <WorkflowWizard
-              onClose={() => setShowWorkflowWizard(false)}
+              onClose={() => {
+                setShowWorkflowWizard(false);
+                if (isMobile) setShowRightDrawer(false);
+              }}
               onSave={handleSaveWorkflowComplete}
             />
           </ErrorBoundary>
         </div>
       ) : (
-        <div className="shrink-0 overflow-hidden" style={{ width: rightSidebarWidth }}>
+        <div
+          className={`${isMobile
+            ? `mobile-drawer-right ${showRightDrawer ? 'mobile-drawer-right-open' : 'mobile-drawer-right-closed'}`
+            : 'shrink-0 overflow-hidden hidden md:block'}`}
+          style={!isMobile ? { width: rightSidebarWidth } : undefined}
+        >
           <ErrorBoundary name="AgentStudio">
             <AgentStudio
               toolLogs={toolLogs}
               onClear={handleClearLogs}
-              onSelectWorkflow={handleSelectWorkflow}
+              onSelectWorkflow={(wf) => {
+                handleSelectWorkflow(wf);
+                if (isMobile) setShowRightDrawer(false);
+              }}
               onOpenConnections={() => setShowToolConnections(true)}
               activeSkillIds={activeSkillIds}
               onToggleSkill={handleToggleSkill}
@@ -668,6 +752,26 @@ function App() {
             />
           </ErrorBoundary>
         </div>
+      )}
+
+      {/* Mobile Bottom Navigation */}
+      {isMobile && (
+        <BottomNavigation
+          activeView={mobileView}
+          onViewChange={(view) => {
+            setMobileView(view);
+            if (view === 'chat') {
+              setShowLeftDrawer(false);
+              setShowRightDrawer(false);
+            } else if (view === 'workflows') {
+              setShowRightDrawer(true);
+            } else if (view === 'knowledge') {
+              setShowKnowledgeBase(true);
+            } else if (view === 'settings') {
+              setShowToolConnections(true);
+            }
+          }}
+        />
       )}
 
       {/* Run Workflow Modal */}
