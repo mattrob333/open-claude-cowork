@@ -10,6 +10,7 @@ import {
   VariablesArtifact,
   OutputConfigArtifact
 } from './WorkflowCaptureArtifacts';
+import WorkflowApprovalCard from './WorkflowApprovalCard';
 
 // Configure marked for safe rendering
 marked.setOptions({
@@ -184,6 +185,23 @@ const ChatArea: React.FC<ChatAreaProps> = ({
               data={msg.a2uiData}
               onSave={handleSave}
               onEdit={handleEdit}
+            />
+          )}
+          {msg.a2uiType === 'workflow_capture_preview' && msg.a2uiData.workflowPreview && (
+            <WorkflowApprovalCard
+              messageId={msg.id}
+              workflowData={{
+                name: msg.a2uiData.workflowPreview.name || msg.a2uiData.suggestedName || 'New Workflow',
+                description: msg.a2uiData.workflowPreview.description || msg.a2uiData.suggestedDescription || '',
+                icon: msg.a2uiData.workflowPreview.icon || msg.a2uiData.suggestedIcon || '📋',
+                goldenInstructions: msg.a2uiData.goldenInstructions,
+                steps: msg.a2uiData.steps,
+                variables: msg.a2uiData.variables,
+                tags: []
+              }}
+              onApprove={() => console.log('Workflow approved')}
+              onModify={handleEdit}
+              onDeny={() => console.log('Workflow denied')}
             />
           )}
         </div>

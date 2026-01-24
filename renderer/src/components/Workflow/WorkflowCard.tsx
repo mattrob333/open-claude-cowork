@@ -17,6 +17,7 @@ interface WorkflowCardProps {
   onEdit?: (workflow: Workflow) => void;
   onDelete?: (workflow: Workflow) => void;
   onFavorite?: (workflow: Workflow) => void;
+  onInfo?: (workflow: Workflow) => void;
 }
 
 const WorkflowCard: React.FC<WorkflowCardProps> = ({
@@ -27,6 +28,7 @@ const WorkflowCard: React.FC<WorkflowCardProps> = ({
   onEdit,
   onDelete,
   onFavorite,
+  onInfo,
 }) => {
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -51,6 +53,11 @@ const WorkflowCard: React.FC<WorkflowCardProps> = ({
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     onDelete?.(workflow);
+  };
+
+  const handleInfo = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onInfo?.(workflow);
   };
 
   // Format relative time
@@ -141,6 +148,14 @@ const WorkflowCard: React.FC<WorkflowCardProps> = ({
             title={workflow.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
           >
             {workflow.isFavorite ? '★' : '☆'}
+          </button>
+
+          <button
+            className="workflow-card__action"
+            onClick={handleInfo}
+            title="View workflow details"
+          >
+            <ICONS.Info />
           </button>
 
           <button

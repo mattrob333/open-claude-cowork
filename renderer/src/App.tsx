@@ -13,6 +13,8 @@ import { BottomNavigation, MobileHeader, type MobileView } from './components/mo
 import { Session, Message, Role, ToolLogEntry, KnowledgeAsset, ModelOption, WorkflowTemplate, EphemeralDocument } from './types';
 import { MODELS } from './constants';
 import { streamChat, uploadDocument, getDocuments, getDocumentUrl, ChatOptions } from './services/chatService';
+import { saveWorkflow } from './lib/workflowStorage';
+import { Workflow } from './types/workflow';
 
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);

@@ -2,14 +2,21 @@
  * WorkflowPanel Component
  *
  * Displays the list of workflows in the right sidebar.
+ * Uses localStorage for persistence with real-time updates via custom events.
  * Supports filtering, search, and favorites.
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Workflow, WorkflowFilter } from '../../types/workflow';
 import WorkflowCard from './WorkflowCard';
+import WorkflowInfoModal from './WorkflowInfoModal';
 import { ICONS } from '../../constants';
-import { SERVER_URL } from '../../constants';
+import {
+  getWorkflows,
+  saveWorkflow,
+  deleteWorkflow,
+  toggleFavorite
+} from '../../lib/workflowStorage';
 
 interface WorkflowPanelProps {
   onRunWorkflow?: (workflow: Workflow) => void;
@@ -27,7 +34,6 @@ const WorkflowPanel: React.FC<WorkflowPanelProps> = ({
   // State
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // Filter state
   const [filter, setFilter] = useState<WorkflowFilter>({
@@ -39,43 +45,57 @@ const WorkflowPanel: React.FC<WorkflowPanelProps> = ({
 
   // UI state
   const [showFilters, setShowFilters] = useState(false);
+  const [infoWorkflow, setInfoWorkflow] = useState<Workflow | null>(null);
 
   /**
-   * Fetch workflows from API
+   * Load workflows from localStorage
    */
-  const fetchWorkflows = useCallback(async () => {
+  const loadWorkflows = useCallback(() => {
     setIsLoading(true);
-    setError(null);
-
     try {
-      const params = new URLSearchParams();
-      if (filter.search) params.set('search', filter.search);
-      if (filter.status !== 'all') params.set('status', filter.status);
-      if (filter.favoritesOnly) params.set('favorites', 'true');
-      if (filter.tags.length > 0) params.set('tags', filter.tags.join(','));
-
-      const response = await fetch(
-        `${SERVER_URL}/api/workflows?${params.toString()}`
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch workflows');
-      }
-
-      const data = await response.json();
-      setWorkflows(data.workflows || []);
+      const storedWorkflows = getWorkflows();
+      setWorkflows(storedWorkflows);
     } catch (err) {
-      console.error('Error fetching workflows:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load workflows');
+      console.error('Error loading workflows:', err);
     } finally {
       setIsLoading(false);
     }
-  }, [filter]);
+  }, []);
 
-  // Fetch workflows on mount and when filter changes
+  // Load workflows on mount
   useEffect(() => {
-    fetchWorkflows();
-  }, [fetchWorkflows]);
+    loadWorkflows();
+  }, [loadWorkflows]);
+
+  // Listen for workflow events (created, updated, deleted)
+  useEffect(() => {
+    const handleWorkflowCreated = (e: CustomEvent<Workflow>) => {
+      console.log('Workflow created event received:', e.detail);
+      setWorkflows(prev => [...prev, e.detail]);
+    };
+
+    const handleWorkflowUpdated = (e: CustomEvent<Workflow>) => {
+      console.log('Workflow updated event received:', e.detail);
+      setWorkflows(prev =>
+        prev.map(w => w.id === e.detail.id ? e.detail : w)
+      );
+    };
+
+    const handleWorkflowDeleted = (e: CustomEvent<{ id: string }>) => {
+      console.log('Workflow deleted event received:', e.detail);
+      setWorkflows(prev => prev.filter(w => w.id !== e.detail.id));
+    };
+
+    window.addEventListener('workflow-created', handleWorkflowCreated as EventListener);
+    window.addEventListener('workflow-updated', handleWorkflowUpdated as EventListener);
+    window.addEventListener('workflow-deleted', handleWorkflowDeleted as EventListener);
+
+    return () => {
+      window.removeEventListener('workflow-created', handleWorkflowCreated as EventListener);
+      window.removeEventListener('workflow-updated', handleWorkflowUpdated as EventListener);
+      window.removeEventListener('workflow-deleted', handleWorkflowDeleted as EventListener);
+    };
+  }, []);
 
   /**
    * Handle workflow selection
@@ -104,43 +124,25 @@ const WorkflowPanel: React.FC<WorkflowPanelProps> = ({
   /**
    * Handle favorite toggle
    */
-  const handleFavorite = useCallback(
-    async (workflow: Workflow) => {
-      try {
-        await fetch(`${SERVER_URL}/api/workflows/${workflow.id}/favorite`, {
-          method: 'POST',
-        });
-        // Refresh workflows
-        fetchWorkflows();
-      } catch (err) {
-        console.error('Error toggling favorite:', err);
-      }
-    },
-    [fetchWorkflows]
-  );
+  const handleFavorite = useCallback((workflow: Workflow) => {
+    toggleFavorite(workflow.id);
+  }, []);
 
   /**
    * Handle workflow delete
    */
   const handleDelete = useCallback(
-    async (workflow: Workflow) => {
+    (workflow: Workflow) => {
       if (!confirm(`Delete workflow "${workflow.name}"?`)) return;
 
-      try {
-        await fetch(`${SERVER_URL}/api/workflows/${workflow.id}`, {
-          method: 'DELETE',
-        });
-        // Refresh workflows
-        fetchWorkflows();
-        // Clear selection if deleted
-        if (selectedWorkflowId === workflow.id) {
-          onSelectWorkflow?.(null);
-        }
-      } catch (err) {
-        console.error('Error deleting workflow:', err);
+      deleteWorkflow(workflow.id);
+
+      // Clear selection if deleted
+      if (selectedWorkflowId === workflow.id) {
+        onSelectWorkflow?.(null);
       }
     },
-    [fetchWorkflows, selectedWorkflowId, onSelectWorkflow]
+    [selectedWorkflowId, onSelectWorkflow]
   );
 
   /**
@@ -152,7 +154,43 @@ const WorkflowPanel: React.FC<WorkflowPanelProps> = ({
   }, []);
 
   /**
-   * Filter workflows client-side (for immediate feedback)
+   * Handle workflow info view
+   */
+  const handleInfo = useCallback((workflow: Workflow) => {
+    setInfoWorkflow(workflow);
+  }, []);
+
+  /**
+   * Create test workflow (for development testing)
+   */
+  const handleCreateTestWorkflow = useCallback(() => {
+    const testWorkflow: Workflow = {
+      id: `wf_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      name: 'Research & Summarize',
+      description: 'Researches a topic and creates a comprehensive summary',
+      icon: '🔬',
+      status: 'active',
+      goldenInstructions: 'Search the web for information on the given topic, analyze the results, and produce a well-structured summary.',
+      steps: [
+        { id: 'step_1', name: 'Search for information', description: 'Query web search for topic', tools: ['web_search'] },
+        { id: 'step_2', name: 'Analyze results', description: 'Review and extract key points', tools: ['read', 'analyze'] },
+        { id: 'step_3', name: 'Generate summary', description: 'Create structured summary', tools: ['write'] }
+      ],
+      variables: [
+        { id: 'var_1', key: 'topic', name: 'Research Topic', type: 'string', required: true, description: 'The topic to research' },
+        { id: 'var_2', key: 'depth', name: 'Research Depth', type: 'select', required: false, options: ['brief', 'moderate', 'comprehensive'] }
+      ],
+      tags: ['research', 'automation'],
+      runCount: 0,
+      isFavorite: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    saveWorkflow(testWorkflow);
+  }, []);
+
+  /**
+   * Filter workflows client-side
    */
   const filteredWorkflows = workflows.filter(workflow => {
     // Search filter
@@ -168,6 +206,11 @@ const WorkflowPanel: React.FC<WorkflowPanelProps> = ({
 
     // Favorites filter
     if (filter.favoritesOnly && !workflow.isFavorite) {
+      return false;
+    }
+
+    // Status filter
+    if (filter.status !== 'all' && workflow.status !== filter.status) {
       return false;
     }
 
@@ -193,28 +236,19 @@ const WorkflowPanel: React.FC<WorkflowPanelProps> = ({
     );
   }
 
-  // Render error state
-  if (error) {
-    return (
-      <div className={`workflow-panel ${className}`}>
-        <div className="workflow-panel__header">
-          <span className="workflow-panel__title">Workflows</span>
-        </div>
-        <div className="workflow-panel__error">
-          <ICONS.AlertCircle />
-          <span>{error}</span>
-          <button onClick={fetchWorkflows}>Retry</button>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className={`workflow-panel ${className}`}>
       {/* Header */}
       <div className="workflow-panel__header">
         <span className="workflow-panel__title">Workflows</span>
         <span className="workflow-panel__count">{workflows.length}</span>
+        <button
+          onClick={handleCreateTestWorkflow}
+          className="ml-auto p-1.5 text-secondaryText hover:text-accent hover:bg-accent/10 rounded-lg transition-all"
+          title="Create test workflow"
+        >
+          <ICONS.Plus />
+        </button>
       </div>
 
       {/* Search & Filter Bar */}
@@ -336,6 +370,7 @@ const WorkflowPanel: React.FC<WorkflowPanelProps> = ({
                     onEdit={handleEdit}
                     onDelete={handleDelete}
                     onFavorite={handleFavorite}
+                    onInfo={handleInfo}
                   />
                 ))}
               </div>
@@ -362,6 +397,7 @@ const WorkflowPanel: React.FC<WorkflowPanelProps> = ({
                     onEdit={handleEdit}
                     onDelete={handleDelete}
                     onFavorite={handleFavorite}
+                    onInfo={handleInfo}
                   />
                 ))}
               </div>
@@ -369,6 +405,19 @@ const WorkflowPanel: React.FC<WorkflowPanelProps> = ({
           </>
         )}
       </div>
+
+      {/* Info Modal */}
+      {infoWorkflow && (
+        <WorkflowInfoModal
+          workflow={infoWorkflow}
+          isOpen={!!infoWorkflow}
+          onClose={() => setInfoWorkflow(null)}
+          onRun={() => {
+            handleRunWorkflow(infoWorkflow);
+            setInfoWorkflow(null);
+          }}
+        />
+      )}
     </div>
   );
 };
