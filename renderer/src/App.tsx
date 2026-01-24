@@ -7,6 +7,7 @@ import WorkflowWizard from './components/WorkflowWizard';
 import ErrorBoundary from './components/ErrorBoundary';
 import ToolConnections from './components/ToolConnections';
 import DocumentPreview from './components/DocumentPreview';
+import KnowledgeBaseModal from './components/KnowledgeBaseModal';
 import ResizeHandle from './components/ResizeHandle';
 import { Session, Message, Role, ToolLogEntry, KnowledgeAsset, ModelOption, WorkflowTemplate, EphemeralDocument } from './types';
 import { MODELS } from './constants';
@@ -121,6 +122,9 @@ function App() {
 
   // Tool connections modal
   const [showToolConnections, setShowToolConnections] = useState(false);
+
+  // Knowledge base modal
+  const [showKnowledgeBase, setShowKnowledgeBase] = useState(false);
 
   // Skills state
   const [activeSkillIds, setActiveSkillIds] = useState<string[]>([]);
@@ -612,6 +616,7 @@ function App() {
             onToggleAsset={handleToggleAsset}
             onUploadFile={handleUploadFile}
             onViewDocument={handleViewDocument}
+            onOpenKnowledgeBase={() => setShowKnowledgeBase(true)}
           />
         </ErrorBoundary>
       </div>
@@ -678,6 +683,17 @@ function App() {
       <ToolConnections
         isOpen={showToolConnections}
         onClose={() => setShowToolConnections(false)}
+      />
+
+      {/* Knowledge Base Modal */}
+      <KnowledgeBaseModal
+        isOpen={showKnowledgeBase}
+        onClose={() => setShowKnowledgeBase(false)}
+        onUploadClick={() => {
+          // Focus the file input in the sidebar
+          const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+          if (fileInput) fileInput.click();
+        }}
       />
 
       {/* Document Preview Modal */}

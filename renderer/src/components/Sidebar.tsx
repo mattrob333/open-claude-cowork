@@ -34,6 +34,7 @@ interface SidebarProps {
   onToggleAsset: (id: string) => void;
   onUploadFile?: (file: File) => Promise<void>;
   onViewDocument?: (asset: KnowledgeAsset) => void;
+  onOpenKnowledgeBase?: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -46,7 +47,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   assets,
   onToggleAsset,
   onUploadFile,
-  onViewDocument
+  onViewDocument,
+  onOpenKnowledgeBase
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(null);
@@ -315,11 +317,20 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* Zone B: Knowledge Base (30%) */}
       <div className="flex-[3] bg-[#1a1a1a] flex flex-col overflow-hidden">
         <div className="px-5 py-3 flex items-center justify-between border-b border-white/5">
-          <div className="flex items-center gap-2">
+          <div
+            className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={onOpenKnowledgeBase}
+          >
             <span className="text-[11px] font-bold uppercase text-secondaryText tracking-widest">Knowledge Base</span>
             <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
           </div>
-          <button className="text-secondaryText hover:text-primaryText"><ICONS.Database /></button>
+          <button
+            onClick={onOpenKnowledgeBase}
+            className="text-secondaryText hover:text-primaryText transition-colors"
+            title="View all documents"
+          >
+            <ICONS.Database />
+          </button>
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
