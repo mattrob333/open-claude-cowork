@@ -19,22 +19,21 @@
   - Added onRenameSession and onDeleteSession handlers in App.tsx
   - Sessions are client-side state, no backend API needed
 
-### 1.2 Knowledge Base Modal
-- [ ] **Add click handler to Knowledge Base icon**
-  - File: `renderer/src/components/Sidebar.tsx` (Knowledge Base section)
-  - Icon should open modal on click
-  
-- [ ] **Create KnowledgeBaseModal component**
-  - File: `renderer/src/components/KnowledgeBaseModal.tsx` (create)
-  - Display all documents in a table format
-  - Columns: Name, Type, Size, Date Added, Actions
+### 1.2 Knowledge Base Modal ✅
+- [x] **Add click handler to Knowledge Base icon**
+  - File: `renderer/src/components/Sidebar.tsx`
+  - Header text and Database icon both open modal
+
+- [x] **Create KnowledgeBaseModal component**
+  - File: `renderer/src/components/KnowledgeBaseModal.tsx`
+  - Table with: Name, Type, Size, Date Added, Status, Actions
   - Actions: View, Delete
-  - Search/filter capability
-  - Upload button at top
-  
-- [ ] **Fetch all documents from backend**
-  - File: `server/routes/knowledge.js` (check existing)
-  - GET /api/knowledge - return all documents with metadata
+  - Search/filter input
+  - Upload button that triggers sidebar file input
+
+- [x] **Fetch all documents from backend**
+  - Uses existing `getDocuments()` from chatService.ts
+  - Uses existing `deleteDocument()` for delete functionality
 
 ### 1.3 Chat Input Height Reset Fix
 - [ ] **Fix textarea auto-resize behavior**
