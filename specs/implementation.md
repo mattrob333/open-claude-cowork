@@ -103,10 +103,21 @@
 - [ ] **Integrate with chat flow** (DEFERRED)
   - Can be added when artifact streaming is implemented
 
-### 3.3 Email Template System (DEFERRED)
-- [ ] EmailTemplateEditor - Can be built on RichTextEditor later
-- [ ] Email type and storage - Future enhancement
-- [ ] Template selector - Future enhancement
+### 3.3 Email Template System ✅
+- [x] **EmailTemplateEditor component**
+  - File: `renderer/src/components/editor/EmailTemplateEditor.tsx`
+  - Subject line input, rich text body using TipTap
+  - HTML preview mode with styled iframe
+  - Save/load template functionality
+
+- [x] **Email templates backend API**
+  - File: `server/routes/email-templates.js`
+  - CRUD operations for email templates
+  - JSON file storage
+
+- [x] **Template selector dropdown**
+  - Integrated in EmailTemplateEditor
+  - Load saved templates from backend
 
 ---
 
