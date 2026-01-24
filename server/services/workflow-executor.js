@@ -5,10 +5,12 @@
  * Handles variable substitution, checkpoints, and error recovery.
  */
 
-import Anthropic from '@anthropic-ai/sdk';
+import { query } from '@anthropic-ai/claude-agent-sdk';
 import { generateExecutionPrompt } from '../prompts/workflow-extraction.js';
 import workflowService from './workflow-service.js';
 import logger from '../lib/logger.js';
+
+// Note: Using Claude Agent SDK's query function for execution
 
 // ============================================================
 // TYPES (JSDoc for TypeScript-like documentation)
@@ -38,7 +40,6 @@ import logger from '../lib/logger.js';
 
 class WorkflowExecutor {
   constructor() {
-    this.anthropic = new Anthropic();
     this.activeExecutions = new Map();
   }
 
@@ -239,27 +240,32 @@ class WorkflowExecutor {
       context.variables
     );
 
-    // Call Claude API with streaming
+    // Call Claude Agent SDK with streaming
     let fullOutput = '';
 
     try {
-      const stream = await this.anthropic.messages.stream({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 4096,
-        system: systemPrompt,
-        messages: [
-          {
-            role: 'user',
-            content: `Execute step "${step.name}":\n\n${prompt}`,
-          },
-        ],
+      // Use the Claude Agent SDK query function
+      const stream = query({
+        prompt: `Execute step "${step.name}":\n\n${prompt}`,
+        systemPrompt: systemPrompt,
+        allowedTools: step.tools || ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep'],
+        maxTurns: 5,
+        permissionMode: 'bypassPermissions',
       });
 
       for await (const chunk of stream) {
-        if (chunk.type === 'content_block_delta' && chunk.delta?.text) {
-          const text = chunk.delta.text;
-          fullOutput += text;
-          onChunk(text);
+        // Handle different chunk types from the agent SDK
+        if (chunk.type === 'text') {
+          fullOutput += chunk.content;
+          onChunk(chunk.content);
+        } else if (chunk.type === 'assistant' && chunk.message?.content) {
+          // Handle structured message responses
+          for (const block of chunk.message.content) {
+            if (block.type === 'text') {
+              fullOutput += block.text;
+              onChunk(block.text);
+            }
+          }
         }
       }
 

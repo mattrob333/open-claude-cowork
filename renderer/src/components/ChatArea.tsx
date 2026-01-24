@@ -5,6 +5,11 @@ import DOMPurify from 'dompurify';
 import { Session, Message, Role, ModelOption, EphemeralDocument } from '../types';
 import { MODELS, ICONS } from '../constants';
 import ContextChips, { ContextChipsHandle } from './ContextChips';
+import {
+  GoldenInstructionsArtifact,
+  VariablesArtifact,
+  OutputConfigArtifact
+} from './WorkflowCaptureArtifacts';
 
 // Configure marked for safe rendering
 marked.setOptions({
@@ -25,6 +30,10 @@ interface ChatAreaProps {
   onAddEphemeralDoc: (doc: EphemeralDocument) => void;
   onRemoveEphemeralDoc: (id: string) => void;
   onToggleEphemeralDoc: (id: string) => void;
+  // Workflow capture A2UI event handlers
+  onWorkflowCaptureApprove?: (messageId: string, step: 'golden' | 'variables' | 'output') => void;
+  onWorkflowCaptureEdit?: (messageId: string, step: 'golden' | 'variables' | 'output') => void;
+  onWorkflowCaptureSave?: (messageId: string) => void;
 }
 
 const ChatArea: React.FC<ChatAreaProps> = ({
@@ -38,7 +47,10 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   ephemeralDocs,
   onAddEphemeralDoc,
   onRemoveEphemeralDoc,
-  onToggleEphemeralDoc
+  onToggleEphemeralDoc,
+  onWorkflowCaptureApprove,
+  onWorkflowCaptureEdit,
+  onWorkflowCaptureSave
 }) => {
   const [inputText, setInputText] = useState('');
   const [showModels, setShowModels] = useState(false);
@@ -131,6 +143,53 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   };
 
   const renderMessage = (msg: Message) => {
+    // Render A2UI workflow capture artifacts
+    if (msg.isA2UI && msg.a2uiType && msg.a2uiData) {
+      const handleApprove = () => {
+        const step = msg.a2uiType === 'workflow_capture_golden' ? 'golden'
+          : msg.a2uiType === 'workflow_capture_variables' ? 'variables'
+          : 'output';
+        onWorkflowCaptureApprove?.(msg.id, step);
+      };
+
+      const handleEdit = () => {
+        const step = msg.a2uiType === 'workflow_capture_golden' ? 'golden'
+          : msg.a2uiType === 'workflow_capture_variables' ? 'variables'
+          : 'output';
+        onWorkflowCaptureEdit?.(msg.id, step);
+      };
+
+      const handleSave = () => {
+        onWorkflowCaptureSave?.(msg.id);
+      };
+
+      return (
+        <div key={msg.id} className="w-full flex flex-col gap-2">
+          {msg.a2uiType === 'workflow_capture_golden' && (
+            <GoldenInstructionsArtifact
+              data={msg.a2uiData}
+              onApprove={handleApprove}
+              onEdit={handleEdit}
+            />
+          )}
+          {msg.a2uiType === 'workflow_capture_variables' && (
+            <VariablesArtifact
+              data={msg.a2uiData}
+              onApprove={handleApprove}
+              onEdit={handleEdit}
+            />
+          )}
+          {msg.a2uiType === 'workflow_capture_output' && (
+            <OutputConfigArtifact
+              data={msg.a2uiData}
+              onSave={handleSave}
+              onEdit={handleEdit}
+            />
+          )}
+        </div>
+      );
+    }
+
     if (msg.isArtifact && msg.artifactMetadata) {
       const content = getMessageContent(msg);
       const isEditing = editingId === msg.id;
@@ -296,10 +355,14 @@ const ChatArea: React.FC<ChatAreaProps> = ({
         </div>
         
         <div className="flex items-center gap-3">
-          {/* Save Workflow Button */}
-          <button 
-            onClick={onSaveWorkflow}
-            className="flex items-center gap-2 bg-accent/10 border border-accent/20 px-4 py-1.5 rounded-full text-[11px] font-bold text-accent hover:bg-accent hover:text-canvas transition-all group"
+          {/* Save Workflow Button - triggers workflow extraction in chat */}
+          <button
+            onClick={() => {
+              // Send a message that triggers workflow extraction via A2UI
+              onSend('[WORKFLOW_CAPTURE] Please analyze this conversation and extract it as a reusable workflow. Show me the workflow details for approval.');
+            }}
+            disabled={messages.length < 2 || isTyping}
+            className="flex items-center gap-2 bg-accent/10 border border-accent/20 px-4 py-1.5 rounded-full text-[11px] font-bold text-accent hover:bg-accent hover:text-canvas transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
             title="Convert current chat logic into a Saved Workflow"
           >
             <ICONS.Wand />

@@ -11,6 +11,43 @@ export interface Message {
   timestamp: number;
   isArtifact?: boolean;
   artifactMetadata?: ArtifactMetadata;
+  // A2UI support for workflow capture artifacts
+  isA2UI?: boolean;
+  a2uiType?: 'workflow_capture_golden' | 'workflow_capture_variables' | 'workflow_capture_output' | 'workflow_capture_preview';
+  a2uiData?: WorkflowCaptureData;
+}
+
+// Data for workflow capture A2UI artifacts
+export interface WorkflowCaptureData {
+  // For golden instructions artifact
+  suggestedName?: string;
+  suggestedIcon?: string;
+  suggestedDescription?: string;
+  goldenInstructions?: string;
+  steps?: { name: string; description: string; tools: string[] }[];
+  estimatedRuntime?: string;
+  // For variables artifact
+  variables?: {
+    key: string;
+    name: string;
+    type: string;
+    required: boolean;
+    defaultValue?: unknown;
+    options?: { value: string; label: string }[];
+    usedInSteps: string[];
+    exampleValue?: string;
+  }[];
+  // For output config artifact
+  outputStyle?: 'summary_card' | 'detailed_report' | 'minimal';
+  suggestedActions?: { id: string; label: string; icon: string; type: string }[];
+  // For preview/final save
+  workflowPreview?: {
+    name: string;
+    description: string;
+    icon: string;
+    stepCount: number;
+    variableCount: number;
+  };
 }
 
 export interface ArtifactMetadata {

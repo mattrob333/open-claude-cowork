@@ -121,6 +121,21 @@ function App() {
   const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowTemplate | null>(null);
   const [showWorkflowWizard, setShowWorkflowWizard] = useState(false);
 
+  // Workflow capture state (for A2UI flow)
+  const [workflowCaptureState, setWorkflowCaptureState] = useState<{
+    step: 'idle' | 'golden' | 'variables' | 'output' | 'saving';
+    data: {
+      name?: string;
+      description?: string;
+      icon?: string;
+      goldenInstructions?: string;
+      steps?: { name: string; description: string; tools: string[] }[];
+      variables?: unknown[];
+      outputStyle?: string;
+      actions?: unknown[];
+    };
+  }>({ step: 'idle', data: {} });
+
   // Tool connections modal
   const [showToolConnections, setShowToolConnections] = useState(false);
 
@@ -588,6 +603,40 @@ function App() {
     setShowWorkflowWizard(false);
   }, []);
 
+  // Workflow capture A2UI handlers
+  const handleWorkflowCaptureApprove = useCallback((messageId: string, step: 'golden' | 'variables' | 'output') => {
+    console.log('Workflow capture approve:', step, messageId);
+
+    if (step === 'golden') {
+      // Move to variables step - send message to agent to show variables artifact
+      handleSend('[WORKFLOW_CAPTURE_CONTINUE] The golden instructions look good. Now show me the variables you identified.');
+      setWorkflowCaptureState(prev => ({ ...prev, step: 'variables' }));
+    } else if (step === 'variables') {
+      // Move to output config step
+      handleSend('[WORKFLOW_CAPTURE_CONTINUE] The variables look good. Now show me the output configuration options.');
+      setWorkflowCaptureState(prev => ({ ...prev, step: 'output' }));
+    }
+  }, [handleSend]);
+
+  const handleWorkflowCaptureEdit = useCallback((messageId: string, step: 'golden' | 'variables' | 'output') => {
+    console.log('Workflow capture edit:', step, messageId);
+    // For now, just tell the agent to regenerate
+    handleSend(`[WORKFLOW_CAPTURE_EDIT] Please regenerate the ${step} section with modifications.`);
+  }, [handleSend]);
+
+  const handleWorkflowCaptureSave = useCallback(async (messageId: string) => {
+    console.log('Workflow capture save:', messageId);
+    setWorkflowCaptureState(prev => ({ ...prev, step: 'saving' }));
+
+    // Tell the agent to save the workflow
+    handleSend('[WORKFLOW_CAPTURE_SAVE] Please save this workflow now.');
+
+    // Reset state after a delay
+    setTimeout(() => {
+      setWorkflowCaptureState({ step: 'idle', data: {} });
+    }, 2000);
+  }, [handleSend]);
+
   // View document in preview modal
   const handleViewDocument = useCallback(async (asset: KnowledgeAsset) => {
     setPreviewDocument({ asset, url: null, isLoading: true });
@@ -697,6 +746,9 @@ function App() {
             onAddEphemeralDoc={handleAddEphemeralDoc}
             onRemoveEphemeralDoc={handleRemoveEphemeralDoc}
             onToggleEphemeralDoc={handleToggleEphemeralDoc}
+            onWorkflowCaptureApprove={handleWorkflowCaptureApprove}
+            onWorkflowCaptureEdit={handleWorkflowCaptureEdit}
+            onWorkflowCaptureSave={handleWorkflowCaptureSave}
           />
         </ErrorBoundary>
       </div>
