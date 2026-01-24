@@ -15,6 +15,7 @@ import workflowsRouter, { loadWorkflows } from './routes/workflows.js';
 import documentsRouter from './routes/documents.js';
 import sourcesRouter from './routes/sources.js';
 import skillsRouter from './routes/skills.js';
+import emailTemplatesRouter from './routes/email-templates.js';
 import { fetchChunksForDocuments, getDocumentsByIds } from './lib/supabase.js';
 import { loadSkills } from './lib/skill-loader.js';
 import { matchSkills, buildSystemPromptWithSkills, stripSkillInvocations } from './lib/skill-matcher.js';
@@ -451,6 +452,9 @@ app.use('/api/sources', sourcesRouter);
 
 // Mount skills router for skills discovery and management
 app.use('/api/skills', skillsRouter);
+
+// Mount email templates router for email template management
+app.use('/api/email-templates', emailTemplatesRouter);
 
 // POST /api/workflows/run - Run a workflow with variables (needs Composio access)
 app.post('/api/workflows/run', validateWorkflowRun, async (req, res) => {
