@@ -6,20 +6,18 @@
 
 ## Phase 1: UI Fixes & Polishing
 
-### 1.1 Chat Session Rename
-- [ ] **Add three-dot menu to chat sessions in sidebar**
-  - File: `renderer/src/components/Sidebar.tsx` or `NotebookList.tsx`
-  - Add dropdown menu with "Rename", "Delete" options
-  - Use existing dropdown component or create one
-  
-- [ ] **Implement rename modal/inline edit**
-  - File: `renderer/src/components/SessionRenameModal.tsx` (create)
-  - Allow inline editing or modal with text input
-  - Save to session state/backend
-  
-- [ ] **Add API endpoint for session rename**
-  - File: `server/routes/sessions.js` or `server/routes/chat.js`
-  - PUT /api/sessions/:id with { title: string }
+### 1.1 Chat Session Rename ✅
+- [x] **Add three-dot menu to chat sessions in sidebar**
+  - File: `renderer/src/components/Sidebar.tsx`
+  - Added MoreVertical icon and dropdown menu with "Rename", "Delete" options
+
+- [x] **Implement rename modal/inline edit**
+  - Implemented inline editing in Sidebar.tsx
+  - Press Enter to save, Escape to cancel
+
+- [x] **Add handlers for session rename/delete**
+  - Added onRenameSession and onDeleteSession handlers in App.tsx
+  - Sessions are client-side state, no backend API needed
 
 ### 1.2 Knowledge Base Modal
 - [ ] **Add click handler to Knowledge Base icon**
