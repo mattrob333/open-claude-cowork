@@ -35,20 +35,11 @@
   - Uses existing `getDocuments()` from chatService.ts
   - Uses existing `deleteDocument()` for delete functionality
 
-### 1.3 Chat Input Height Reset Fix
-- [ ] **Fix textarea auto-resize behavior**
-  - File: `renderer/src/components/ChatInput.tsx` or `InputArea.tsx`
-  - Current bug: textarea stays expanded after submit
-  - Fix: Reset height to initial value (e.g., 44px or 1 row) after message sent
-  - Implementation:
-    ```tsx
-    const handleSubmit = () => {
-      // ... send message
-      textareaRef.current.style.height = 'auto'; // or initial height
-      setMessage('');
-    };
-    ```
-  - Use controlled height with useEffect on message change
+### 1.3 Chat Input Height Reset Fix ✅
+- [x] **Fix textarea auto-resize behavior**
+  - File: `renderer/src/components/ChatArea.tsx`
+  - Added textareaRef to track the textarea element
+  - Reset `style.height = 'auto'` in handleSend after message submission
 
 ---
 
