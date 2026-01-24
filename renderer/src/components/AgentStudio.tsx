@@ -1,11 +1,13 @@
 
 import React, { useState } from 'react';
 import { ToolLogEntry, WorkflowTemplate } from '../types';
+import { Workflow } from '../types/workflow';
 import { ICONS } from '../constants';
 import BrowserPreview, { BrowserPreviewCompact } from './BrowserPreview';
 import { ToolTimelineIcon } from './ToolTimelineIcon';
 import { WorkflowServiceLogosCompact } from './WorkflowServiceLogos';
 import SkillsPanel from './SkillsPanel';
+import { WorkflowPanel, WorkflowRunner } from './Workflow';
 
 /**
  * Humanizes raw tool names for display
@@ -56,6 +58,8 @@ interface AgentStudioProps {
   activeSkillIds?: string[];
   onToggleSkill?: (skillId: string) => void;
   onActivateSkill?: (skillId: string) => void;
+  // Use new workflow system
+  useNewWorkflowSystem?: boolean;
 }
 
 type TabType = 'workflows' | 'skills';
@@ -100,6 +104,7 @@ const AgentStudio: React.FC<AgentStudioProps> = ({
   activeSkillIds = [],
   onToggleSkill,
   onActivateSkill,
+  useNewWorkflowSystem = false,
 }) => {
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
   const [expandedScreenshot, setExpandedScreenshot] = useState<{
@@ -108,6 +113,10 @@ const AgentStudio: React.FC<AgentStudioProps> = ({
     title?: string;
   } | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('workflows');
+
+  // New workflow system state
+  const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null);
+  const [runningWorkflow, setRunningWorkflow] = useState<Workflow | null>(null);
 
   // Tab configuration (Execution is now in bottom panel, not a tab)
   const tabs: { id: TabType; label: string; badge?: number }[] = [
@@ -156,40 +165,49 @@ const AgentStudio: React.FC<AgentStudioProps> = ({
 
         {/* Tab Content */}
         {activeTab === 'workflows' && (
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="h-[50px] flex items-center justify-between px-5 border-b border-border shrink-0">
-              <span className="text-[11px] font-bold uppercase text-secondaryText tracking-widest">Saved Workflows</span>
-              <button className="text-secondaryText hover:text-primaryText"><ICONS.Layout /></button>
-            </div>
+          useNewWorkflowSystem ? (
+            <WorkflowPanel
+              onRunWorkflow={(workflow) => setRunningWorkflow(workflow)}
+              onSelectWorkflow={setSelectedWorkflow}
+              selectedWorkflowId={selectedWorkflow?.id}
+              className="flex-1"
+            />
+          ) : (
+            <div className="flex-1 flex flex-col overflow-hidden">
+              <div className="h-[50px] flex items-center justify-between px-5 border-b border-border shrink-0">
+                <span className="text-[11px] font-bold uppercase text-secondaryText tracking-widest">Saved Workflows</span>
+                <button className="text-secondaryText hover:text-primaryText"><ICONS.Layout /></button>
+              </div>
 
-            <div className="flex-1 overflow-y-auto p-4">
-              <div className="grid grid-cols-2 gap-3">
-                {SAVED_WORKFLOWS.map(wf => (
-                  <button
-                    key={wf.id}
-                    onClick={() => onSelectWorkflow(wf)}
-                    className="flex flex-col items-center gap-2 p-4 rounded-xl bg-card border border-border hover:border-accent hover:shadow-lg transition-all group active:scale-95"
-                  >
-                    <div className="text-accent opacity-60 group-hover:opacity-100 transition-all group-hover:scale-110">
-                      {wf.icon === 'Wand' ? <ICONS.Wand /> : wf.icon === 'FileText' ? <ICONS.FileText /> : wf.icon === 'Cpu' ? <ICONS.Cpu /> : <ICONS.Tool />}
-                    </div>
-                    <span className="text-[11px] font-bold text-secondaryText group-hover:text-primaryText text-center leading-tight">
-                      {wf.name}
-                    </span>
-                    {/* Service logos if available */}
-                    {wf.usedServices && wf.usedServices.length > 0 && (
-                      <WorkflowServiceLogosCompact
-                        services={wf.usedServices}
-                        maxVisible={3}
-                        size={14}
-                        className="mt-1"
-                      />
-                    )}
-                  </button>
-                ))}
+              <div className="flex-1 overflow-y-auto p-4">
+                <div className="grid grid-cols-2 gap-3">
+                  {SAVED_WORKFLOWS.map(wf => (
+                    <button
+                      key={wf.id}
+                      onClick={() => onSelectWorkflow(wf)}
+                      className="flex flex-col items-center gap-2 p-4 rounded-xl bg-card border border-border hover:border-accent hover:shadow-lg transition-all group active:scale-95"
+                    >
+                      <div className="text-accent opacity-60 group-hover:opacity-100 transition-all group-hover:scale-110">
+                        {wf.icon === 'Wand' ? <ICONS.Wand /> : wf.icon === 'FileText' ? <ICONS.FileText /> : wf.icon === 'Cpu' ? <ICONS.Cpu /> : <ICONS.Tool />}
+                      </div>
+                      <span className="text-[11px] font-bold text-secondaryText group-hover:text-primaryText text-center leading-tight">
+                        {wf.name}
+                      </span>
+                      {/* Service logos if available */}
+                      {wf.usedServices && wf.usedServices.length > 0 && (
+                        <WorkflowServiceLogosCompact
+                          services={wf.usedServices}
+                          maxVisible={3}
+                          size={14}
+                          className="mt-1"
+                        />
+                      )}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+          )
         )}
 
         {activeTab === 'skills' && onToggleSkill && onActivateSkill && (
@@ -331,6 +349,18 @@ const AgentStudio: React.FC<AgentStudioProps> = ({
           )}
         </div>
       </div>
+
+      {/* Workflow Runner Modal */}
+      {runningWorkflow && (
+        <WorkflowRunner
+          workflow={runningWorkflow}
+          onClose={() => setRunningWorkflow(null)}
+          onComplete={(run) => {
+            console.log('Workflow completed:', run);
+            setRunningWorkflow(null);
+          }}
+        />
+      )}
 
       {/* Full Screenshot Modal */}
       {expandedScreenshot && (
