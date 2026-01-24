@@ -69,13 +69,41 @@ export function deduplicateById(skills) {
 }
 
 /**
- * Build enhanced system prompt with skills and document context
- * @param {string | null} basePrompt - Base system prompt
- * @param {Skill[]} skills - Active skills to inject
- * @param {string | null} documentContext - Document context from knowledge base
+ * Build a compact skills manifest for the agent to reason about
+ * @param {Skill[]} availableSkills - All available skills
+ * @param {Set<string>} activeIds - Set of active skill IDs
  * @returns {string}
  */
-export function buildSystemPromptWithSkills(basePrompt, skills, documentContext) {
+function buildSkillsManifest(availableSkills, activeIds) {
+  if (!availableSkills || availableSkills.length === 0) {
+    return '';
+  }
+
+  const skillEntries = availableSkills.map(skill => {
+    const isActive = activeIds.has(skill.id);
+    const status = isActive ? ' [ACTIVE]' : '';
+    const triggers = skill.triggers.length > 0 ? ` (triggers: ${skill.triggers.slice(0, 3).join(', ')})` : '';
+    return `- ${skill.id}${status}: ${skill.description}${triggers}`;
+  }).join('\n');
+
+  return `<skills-manifest>
+You have access to the following skills. Skills provide specialized instructions and methodologies.
+
+${skillEntries}
+
+To use a skill that isn't active, you can mention it to the user or incorporate its approach if you know it's relevant to their request. Active skills have their full instructions loaded below.
+</skills-manifest>`;
+}
+
+/**
+ * Build enhanced system prompt with skills and document context
+ * @param {string | null} basePrompt - Base system prompt
+ * @param {Skill[]} activeSkills - Active skills to inject (full content)
+ * @param {string | null} documentContext - Document context from knowledge base
+ * @param {Skill[]} [availableSkills] - All available skills (for manifest)
+ * @returns {string}
+ */
+export function buildSystemPromptWithSkills(basePrompt, activeSkills, documentContext, availableSkills = null) {
   const parts = [];
 
   // 1. Add base system prompt if provided
@@ -83,14 +111,23 @@ export function buildSystemPromptWithSkills(basePrompt, skills, documentContext)
     parts.push(basePrompt);
   }
 
-  // 2. Add document context if provided
+  // 2. Add skills manifest (all available skills)
+  if (availableSkills && availableSkills.length > 0) {
+    const activeIds = new Set((activeSkills || []).map(s => s.id));
+    const manifest = buildSkillsManifest(availableSkills, activeIds);
+    if (manifest) {
+      parts.push(manifest);
+    }
+  }
+
+  // 3. Add document context if provided
   if (documentContext && documentContext.trim()) {
     parts.push(documentContext);
   }
 
-  // 3. Add active skills
-  if (skills && skills.length > 0) {
-    const skillsSection = skills.map(skill => {
+  // 4. Add active skills (full content)
+  if (activeSkills && activeSkills.length > 0) {
+    const skillsSection = activeSkills.map(skill => {
       const metadata = [];
       if (skill.version) metadata.push(`version="${skill.version}"`);
       if (skill.author) metadata.push(`author="${skill.author}"`);
@@ -99,7 +136,7 @@ export function buildSystemPromptWithSkills(basePrompt, skills, documentContext)
       return `<skill name="${skill.name}" id="${skill.id}"${metaStr}>\n${skill.content}\n</skill>`;
     }).join('\n\n');
 
-    parts.push(`<active-skills>\nThe following skills are active for this conversation. Follow their instructions when relevant:\n\n${skillsSection}\n</active-skills>`);
+    parts.push(`<active-skills>\nThe following skills are active. Follow their instructions when relevant:\n\n${skillsSection}\n</active-skills>`);
   }
 
   return parts.join('\n\n');

@@ -308,8 +308,9 @@ app.post('/api/chat', validateChatRequest, async (req, res) => {
       })}\n\n`);
     }
 
-    // Build enhanced system prompt with skills and document context
-    const enhancedSystemPrompt = buildSystemPromptWithSkills(null, matchedSkills, documentContext);
+    // Build enhanced system prompt with skills manifest and document context
+    // Pass all available skills so agent knows what's available, plus matched skills for full content
+    const enhancedSystemPrompt = buildSystemPromptWithSkills(null, matchedSkills, documentContext, availableSkills);
 
     // Strip skill invocations from message (e.g., /code-review -> rest of message)
     const cleanMessage = stripSkillInvocations(message);
