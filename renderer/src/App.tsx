@@ -15,6 +15,8 @@ import { MODELS } from './constants';
 import { streamChat, uploadDocument, getDocuments, getDocumentUrl, ChatOptions } from './services/chatService';
 import { saveWorkflow } from './lib/workflowStorage';
 import { Workflow } from './types/workflow';
+import AuthModal from './components/AuthModal';
+import UserProfileMenu from './components/UserProfileMenu';
 
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
@@ -143,6 +145,9 @@ function App() {
 
   // Knowledge base modal
   const [showKnowledgeBase, setShowKnowledgeBase] = useState(false);
+
+  // Auth modal
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   // Mobile responsive state
   const [isMobile, setIsMobile] = useState(false);
@@ -751,6 +756,7 @@ function App() {
             onWorkflowCaptureApprove={handleWorkflowCaptureApprove}
             onWorkflowCaptureEdit={handleWorkflowCaptureEdit}
             onWorkflowCaptureSave={handleWorkflowCaptureSave}
+            onOpenAuth={() => setShowAuthModal(true)}
           />
         </ErrorBoundary>
       </div>
@@ -866,6 +872,12 @@ function App() {
           onDownload={previewDocument.url ? handleDownloadDocument : undefined}
         />
       )}
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+      />
     </div>
   );
 }

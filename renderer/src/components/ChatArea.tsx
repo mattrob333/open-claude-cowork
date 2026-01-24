@@ -11,6 +11,7 @@ import {
   OutputConfigArtifact
 } from './WorkflowCaptureArtifacts';
 import WorkflowApprovalCard from './WorkflowApprovalCard';
+import UserProfileMenu from './UserProfileMenu';
 
 // Configure marked for safe rendering
 marked.setOptions({
@@ -35,6 +36,8 @@ interface ChatAreaProps {
   onWorkflowCaptureApprove?: (messageId: string, step: 'golden' | 'variables' | 'output') => void;
   onWorkflowCaptureEdit?: (messageId: string, step: 'golden' | 'variables' | 'output') => void;
   onWorkflowCaptureSave?: (messageId: string) => void;
+  // Auth
+  onOpenAuth?: () => void;
 }
 
 const ChatArea: React.FC<ChatAreaProps> = ({
@@ -51,7 +54,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   onToggleEphemeralDoc,
   onWorkflowCaptureApprove,
   onWorkflowCaptureEdit,
-  onWorkflowCaptureSave
+  onWorkflowCaptureSave,
+  onOpenAuth
 }) => {
   const [inputText, setInputText] = useState('');
   const [showModels, setShowModels] = useState(false);
@@ -429,6 +433,11 @@ const ChatArea: React.FC<ChatAreaProps> = ({
               </div>
             )}
           </div>
+
+          {/* User Profile Menu */}
+          <UserProfileMenu
+            onOpenAuth={onOpenAuth}
+          />
         </div>
       </div>
 
