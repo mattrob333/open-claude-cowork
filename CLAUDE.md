@@ -198,6 +198,25 @@ All providers implement async generator `query()` yielding normalized chunks:
 | Sync service | ✅ `lib/sync-service.js` |
 | Sync dashboard UI | ✅ `SyncDashboard.tsx` |
 
+### ✅ Phase 2.8: Skills System - COMPLETE
+
+| Task | Status |
+|------|--------|
+| Skill loader utility | ✅ `lib/skill-loader.js` |
+| Skill matcher | ✅ `lib/skill-matcher.js` |
+| Skills API routes | ✅ `routes/skills.js` |
+| Built-in skills | ✅ `skills/` (code-review, react-component, api-design, remotion-video) |
+| Skills service (frontend) | ✅ `services/skillsService.ts` |
+| Skills panel UI | ✅ `SkillsPanel.tsx` |
+| AgentStudio tabs | ✅ Workflows/Skills/Execution tabs |
+
+**Usage:**
+- Skills are markdown files with YAML frontmatter in `server/skills/{skill-name}/SKILL.md`
+- Explicit invocation: `/code-review review this function`
+- Trigger matching: Message containing "review this code" auto-activates code-review skill
+- Skills discovery: GET `/api/skills`
+- Skills inject instructions into system prompt when activated
+
 ### ✅ Phase 5: Deployment Infrastructure - COMPLETE
 
 | Task | Status |

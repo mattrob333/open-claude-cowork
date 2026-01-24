@@ -60,6 +60,7 @@ export type StreamChunkType =
   | 'text'
   | 'tool_use'
   | 'tool_result'
+  | 'skills_active'
   | 'error'
   | 'done';
 
@@ -112,6 +113,11 @@ export interface DoneChunk extends BaseStreamChunk {
   type: 'done';
 }
 
+export interface SkillsActiveChunk extends BaseStreamChunk {
+  type: 'skills_active';
+  skills: Array<{ id: string; name: string }>;
+}
+
 export type StreamChunk =
   | ConnectedChunk
   | StatusChunk
@@ -119,6 +125,7 @@ export type StreamChunk =
   | TextChunk
   | ToolUseChunk
   | ToolResultChunk
+  | SkillsActiveChunk
   | ErrorChunk
   | DoneChunk;
 
@@ -225,4 +232,28 @@ export interface HealthCheckResponse {
 export interface ProvidersResponse {
   providers: string[];
   default: string;
+}
+
+// Skill types
+export interface Skill {
+  id: string;
+  name: string;
+  description: string;
+  triggers: string[];
+  version: string;
+  author?: string;
+  content?: string;  // Full markdown content (only when fetching single skill)
+  filePath?: string;
+  isActive: boolean;
+  source: 'user' | 'project' | 'plugin' | 'builtin';
+}
+
+export interface SkillsResponse {
+  skills: Skill[];
+  total: number;
+}
+
+export interface SkillActiveEvent {
+  type: 'skills_active';
+  skills: Array<{ id: string; name: string }>;
 }

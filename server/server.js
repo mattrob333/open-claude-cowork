@@ -14,7 +14,10 @@ import logger from './lib/logger.js';
 import workflowsRouter, { loadWorkflows } from './routes/workflows.js';
 import documentsRouter from './routes/documents.js';
 import sourcesRouter from './routes/sources.js';
+import skillsRouter from './routes/skills.js';
 import { fetchChunksForDocuments, getDocumentsByIds } from './lib/supabase.js';
+import { loadSkills } from './lib/skill-loader.js';
+import { matchSkills, buildSystemPromptWithSkills, stripSkillInvocations } from './lib/skill-matcher.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -216,7 +219,8 @@ app.post('/api/chat', validateChatRequest, async (req, res) => {
     provider: providerName = 'claude',  // Per-request provider selection
     model = null,  // Per-request model selection
     documentIds = [],  // Active Knowledge Base document IDs
-    ephemeralContext = ''  // Ephemeral document content (already extracted)
+    ephemeralContext = '',  // Ephemeral document content (already extracted)
+    activeSkillIds = []  // Active skill IDs for this session
   } = req.body;
 
   logger.chat.info({
@@ -225,7 +229,8 @@ app.post('/api/chat', validateChatRequest, async (req, res) => {
     provider: providerName,
     model: model || '(default)',
     documentCount: documentIds?.length || 0,
-    hasEphemeralContext: !!ephemeralContext
+    hasEphemeralContext: !!ephemeralContext,
+    activeSkillCount: activeSkillIds?.length || 0
   }, 'Chat request received');
 
   // Validate provider
@@ -286,21 +291,39 @@ app.post('/api/chat', validateChatRequest, async (req, res) => {
     // Build document context if documents are active
     const documentContext = await buildDocumentContext(documentIds, ephemeralContext);
 
-    // Prepare the enhanced prompt with document context
-    let enhancedPrompt = message;
-    if (documentContext) {
-      enhancedPrompt = `${documentContext}\n\nUser: ${message}`;
-      logger.chat.debug({ contextLength: documentContext.length }, 'Added document context to prompt');
+    // Load and match skills
+    const availableSkills = await loadSkills(userId);
+    const matchedSkills = matchSkills(message, availableSkills, activeSkillIds);
+
+    if (matchedSkills.length > 0) {
+      logger.chat.debug({
+        matchedSkillIds: matchedSkills.map(s => s.id),
+        matchedSkillCount: matchedSkills.length
+      }, 'Skills matched for message');
+
+      // Notify client about active skills
+      res.write(`data: ${JSON.stringify({
+        type: 'skills_active',
+        skills: matchedSkills.map(s => ({ id: s.id, name: s.name }))
+      })}\n\n`);
     }
+
+    // Build enhanced system prompt with skills and document context
+    const enhancedSystemPrompt = buildSystemPromptWithSkills(null, matchedSkills, documentContext);
+
+    // Strip skill invocations from message (e.g., /code-review -> rest of message)
+    const cleanMessage = stripSkillInvocations(message);
+    const userPrompt = cleanMessage || message;
 
     // Stream responses from the provider
     try {
       for await (const chunk of provider.query({
-        prompt: enhancedPrompt,
+        prompt: userPrompt,
         chatId,
         userId,
         mcpServers,
         model,
+        systemPrompt: enhancedSystemPrompt || undefined,
         allowedTools: ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep', 'WebSearch', 'WebFetch', 'TodoWrite'],
         maxTurns: 20
       })) {
@@ -424,6 +447,9 @@ app.use('/api/documents', documentsRouter);
 
 // Mount sources router for enterprise connector management
 app.use('/api/sources', sourcesRouter);
+
+// Mount skills router for skills discovery and management
+app.use('/api/skills', skillsRouter);
 
 // POST /api/workflows/run - Run a workflow with variables (needs Composio access)
 app.post('/api/workflows/run', validateWorkflowRun, async (req, res) => {

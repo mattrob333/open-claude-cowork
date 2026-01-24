@@ -4,6 +4,7 @@ import { StreamChunk } from '../types';
 export interface ChatOptions {
   documentIds?: string[];
   ephemeralContext?: string;
+  activeSkillIds?: string[];
 }
 
 export async function* streamChat(
@@ -22,7 +23,8 @@ export async function* streamChat(
       provider,
       model,
       documentIds: options?.documentIds,
-      ephemeralContext: options?.ephemeralContext
+      ephemeralContext: options?.ephemeralContext,
+      activeSkillIds: options?.activeSkillIds
     })
   });
 

@@ -122,6 +122,9 @@ function App() {
   // Tool connections modal
   const [showToolConnections, setShowToolConnections] = useState(false);
 
+  // Skills state
+  const [activeSkillIds, setActiveSkillIds] = useState<string[]>([]);
+
   // Document preview
   const [previewDocument, setPreviewDocument] = useState<{
     asset: KnowledgeAsset;
@@ -323,6 +326,9 @@ function App() {
       if (ephemeralContext) {
         chatOptions.ephemeralContext = ephemeralContext;
       }
+      if (activeSkillIds.length > 0) {
+        chatOptions.activeSkillIds = activeSkillIds;
+      }
 
       for await (const chunk of streamChat(text, sessionId!, provider, currentModel.id, chatOptions)) {
         if (chunk.type === 'text' && chunk.content) {
@@ -389,6 +395,10 @@ function App() {
 
             return updated;
           });
+        } else if (chunk.type === 'skills_active') {
+          // Skills were matched and activated for this message
+          // The chunk contains the matched skills, we can optionally update UI
+          console.log('Skills active:', chunk.skills);
         }
       }
     } catch (error) {
@@ -483,11 +493,27 @@ function App() {
         return prev;
       });
     }
-  }, [activeSessionId, isTyping, currentModel, messagesBySession, knowledgeAssets, ephemeralDocs]);
+  }, [activeSessionId, isTyping, currentModel, messagesBySession, knowledgeAssets, ephemeralDocs, activeSkillIds]);
 
   // Clear tool logs
   const handleClearLogs = useCallback(() => {
     setToolLogs([]);
+  }, []);
+
+  // Toggle skill active state
+  const handleToggleSkill = useCallback((skillId: string) => {
+    setActiveSkillIds(prev =>
+      prev.includes(skillId)
+        ? prev.filter(id => id !== skillId)
+        : [...prev, skillId]
+    );
+  }, []);
+
+  // Activate a skill (toggle on if not already active)
+  const handleActivateSkill = useCallback((skillId: string) => {
+    setActiveSkillIds(prev =>
+      prev.includes(skillId) ? prev : [...prev, skillId]
+    );
   }, []);
 
   // Handle workflow selection
@@ -610,6 +636,9 @@ function App() {
               onClear={handleClearLogs}
               onSelectWorkflow={handleSelectWorkflow}
               onOpenConnections={() => setShowToolConnections(true)}
+              activeSkillIds={activeSkillIds}
+              onToggleSkill={handleToggleSkill}
+              onActivateSkill={handleActivateSkill}
             />
           </ErrorBoundary>
         </div>
