@@ -7,9 +7,10 @@ import WorkflowWizard from './components/WorkflowWizard';
 import ErrorBoundary from './components/ErrorBoundary';
 import ToolConnections from './components/ToolConnections';
 import DocumentPreview from './components/DocumentPreview';
-import { Session, Message, Role, ToolLogEntry, KnowledgeAsset, ModelOption, WorkflowTemplate } from './types';
+import ResizeHandle from './components/ResizeHandle';
+import { Session, Message, Role, ToolLogEntry, KnowledgeAsset, ModelOption, WorkflowTemplate, EphemeralDocument } from './types';
 import { MODELS } from './constants';
-import { streamChat, uploadDocument, getDocuments, getDocumentUrl } from './services/chatService';
+import { streamChat, uploadDocument, getDocuments, getDocumentUrl, ChatOptions } from './services/chatService';
 
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
@@ -98,8 +99,21 @@ function App() {
   const [currentModel, setCurrentModel] = useState<ModelOption>(MODELS[0]);
   const [toolLogs, setToolLogs] = useState<ToolLogEntry[]>([]);
 
-  // Knowledge Base
+  // Sidebar widths (resizable)
+  const [leftSidebarWidth, setLeftSidebarWidth] = useState(288); // Default: w-72 = 288px
+  const [rightSidebarWidth, setRightSidebarWidth] = useState(320); // Default: w-80 = 320px
+
+  // Sidebar constraints
+  const LEFT_SIDEBAR_MIN = 220;
+  const LEFT_SIDEBAR_MAX = 500;
+  const RIGHT_SIDEBAR_MIN = 280;
+  const RIGHT_SIDEBAR_MAX = 600;
+
+  // Knowledge Base (Persistent)
   const [knowledgeAssets, setKnowledgeAssets] = useState<KnowledgeAsset[]>([]);
+
+  // Ephemeral Documents (Session Context)
+  const [ephemeralDocs, setEphemeralDocs] = useState<EphemeralDocument[]>([]);
 
   // Workflow modals
   const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowTemplate | null>(null);
@@ -174,6 +188,36 @@ function App() {
     setKnowledgeAssets(prev =>
       prev.map(a => a.id === id ? { ...a, isActive: !a.isActive } : a)
     );
+  }, []);
+
+  // Ephemeral document handlers
+  const handleAddEphemeralDoc = useCallback((doc: EphemeralDocument) => {
+    setEphemeralDocs(prev => [...prev, doc]);
+  }, []);
+
+  const handleRemoveEphemeralDoc = useCallback((id: string) => {
+    setEphemeralDocs(prev => prev.filter(d => d.id !== id));
+  }, []);
+
+  const handleToggleEphemeralDoc = useCallback((id: string) => {
+    setEphemeralDocs(prev =>
+      prev.map(d => d.id === id ? { ...d, isActive: !d.isActive } : d)
+    );
+  }, []);
+
+  // Sidebar resize handlers
+  const handleLeftSidebarResize = useCallback((delta: number) => {
+    setLeftSidebarWidth(prev => {
+      const newWidth = prev + delta;
+      return Math.min(LEFT_SIDEBAR_MAX, Math.max(LEFT_SIDEBAR_MIN, newWidth));
+    });
+  }, []);
+
+  const handleRightSidebarResize = useCallback((delta: number) => {
+    setRightSidebarWidth(prev => {
+      const newWidth = prev + delta;
+      return Math.min(RIGHT_SIDEBAR_MAX, Math.max(RIGHT_SIDEBAR_MIN, newWidth));
+    });
   }, []);
 
   // Upload file to knowledge base via backend API
@@ -259,7 +303,28 @@ function App() {
       // Determine provider from model
       const provider = currentModel.provider.toLowerCase() === 'opencode' ? 'opencode' : 'claude';
 
-      for await (const chunk of streamChat(text, sessionId!, provider, currentModel.id)) {
+      // Get active document IDs from Knowledge Base (persistent)
+      const activeDocumentIds = knowledgeAssets
+        .filter(asset => asset.isActive)
+        .map(asset => asset.id);
+
+      // Build ephemeral context from active session documents
+      const activeEphemeralDocs = ephemeralDocs.filter(d => d.isActive);
+      const ephemeralContext = activeEphemeralDocs.length > 0
+        ? activeEphemeralDocs
+            .map(d => `<document name="${d.name}">\n${d.content}\n</document>`)
+            .join('\n\n')
+        : undefined;
+
+      const chatOptions: ChatOptions = {};
+      if (activeDocumentIds.length > 0) {
+        chatOptions.documentIds = activeDocumentIds;
+      }
+      if (ephemeralContext) {
+        chatOptions.ephemeralContext = ephemeralContext;
+      }
+
+      for await (const chunk of streamChat(text, sessionId!, provider, currentModel.id, chatOptions)) {
         if (chunk.type === 'text' && chunk.content) {
           setMessagesBySession(prev => {
             const msgs = prev[sessionId!] || [];
@@ -418,7 +483,7 @@ function App() {
         return prev;
       });
     }
-  }, [activeSessionId, isTyping, currentModel, messagesBySession]);
+  }, [activeSessionId, isTyping, currentModel, messagesBySession, knowledgeAssets, ephemeralDocs]);
 
   // Clear tool logs
   const handleClearLogs = useCallback(() => {
@@ -489,7 +554,7 @@ function App() {
   return (
     <div className="h-screen flex overflow-hidden bg-canvas">
       {/* Left Sidebar - Sessions & Knowledge Base */}
-      <div className="w-72 shrink-0">
+      <div className="shrink-0 overflow-hidden" style={{ width: leftSidebarWidth }}>
         <ErrorBoundary name="Sidebar">
           <Sidebar
             sessions={sessions}
@@ -504,6 +569,9 @@ function App() {
         </ErrorBoundary>
       </div>
 
+      {/* Left Resize Handle */}
+      <ResizeHandle onResize={handleLeftSidebarResize} position="left" />
+
       {/* Main Chat Area */}
       <ErrorBoundary name="Chat">
         <ChatArea
@@ -514,12 +582,19 @@ function App() {
           currentModel={currentModel}
           onModelChange={setCurrentModel}
           onSaveWorkflow={handleSaveWorkflow}
+          ephemeralDocs={ephemeralDocs}
+          onAddEphemeralDoc={handleAddEphemeralDoc}
+          onRemoveEphemeralDoc={handleRemoveEphemeralDoc}
+          onToggleEphemeralDoc={handleToggleEphemeralDoc}
         />
       </ErrorBoundary>
 
+      {/* Right Resize Handle */}
+      <ResizeHandle onResize={handleRightSidebarResize} position="right" />
+
       {/* Right Sidebar - Agent Studio */}
       {showWorkflowWizard ? (
-        <div className="w-80 shrink-0">
+        <div className="shrink-0 overflow-hidden" style={{ width: rightSidebarWidth }}>
           <ErrorBoundary name="WorkflowWizard">
             <WorkflowWizard
               onClose={() => setShowWorkflowWizard(false)}
@@ -528,7 +603,7 @@ function App() {
           </ErrorBoundary>
         </div>
       ) : (
-        <div className="w-80 shrink-0">
+        <div className="shrink-0 overflow-hidden" style={{ width: rightSidebarWidth }}>
           <ErrorBoundary name="AgentStudio">
             <AgentStudio
               toolLogs={toolLogs}

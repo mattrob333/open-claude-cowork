@@ -7,10 +7,12 @@ A modern desktop application for AI-powered workflow automation with multi-provi
 Open Claude Cowork is an Electron-based chat application that provides a unified interface for interacting with AI agents. It features:
 
 - **Multi-Provider Support**: Switch between Claude Agent SDK and Opencode SDK
-- **Tool Integration**: 500+ app integrations via Composio MCP
+- **Tool Integration**: 500+ app integrations via Composio MCP (Gmail, Slack, GitHub, etc.)
+- **GitHub Integration**: Create repos, push files, create PRs - all from natural language
 - **Real-Time Execution Visualization**: Watch tools execute with branded icons and status tracking
 - **Workflow Templates**: Save and reuse common automation patterns
-- **Knowledge Base**: Attach documents to enhance AI context
+- **Knowledge Base**: Persistent document storage with chunk-based context injection
+- **Ephemeral Context**: Drag-drop files for immediate chat context (no persistence)
 
 ## Features
 
@@ -38,11 +40,50 @@ Open Claude Cowork is an Electron-based chat application that provides a unified
 - OAuth authentication flows
 - Per-session tool access
 
+### GitHub Integration
+Once connected via Composio OAuth, you can:
+- **Create repositories**: "Create a new repo called my-awesome-app"
+- **Push files**: "Add a README.md and package.json to the repo"
+- **Create branches**: "Create a feature branch for the login system"
+- **Create pull requests**: "Open a PR from feature/login to main"
+- **Manage issues**: "Create an issue about the API rate limiting bug"
+
+Example workflow:
+```
+User: "I have an idea for a todo app. Create a new GitHub repo,
+       set up the file structure for a React app, and push it."
+
+Claude: [Creates repo via GITHUB_CREATE_REPOSITORY]
+        [Generates file structure]
+        [Pushes files via GITHUB_PUSH_FILES]
+        "Done! Your repo is ready at github.com/you/todo-app"
+```
+
+### Document Context System
+Two ways to provide document context to the AI:
+
+**Knowledge Base (Persistent)**
+- Upload documents via drag-drop in the sidebar
+- Documents are processed by Docling and stored in Supabase
+- Toggle documents on/off to include in chat context
+- Persists across sessions
+
+**Ephemeral Context (Session-only)**
+- Drag-drop files directly into the chat input area
+- Appears as chips above the input field
+- Included in current chat only
+- Discarded when session ends
+
 ### Rich Chat Experience
 - Markdown rendering with syntax highlighting
 - Streaming responses
 - Artifact support for code blocks and documents
 - Session management with history
+
+### Flexible UI
+- **Resizable Sidebars**: Drag the edges to resize left and right panels
+- **Grouped Model Selector**: Models organized by provider (Claude, Opencode)
+- **Dark Theme**: Optimized for extended use
 
 ## Quick Start
 
@@ -70,6 +111,19 @@ The setup script will:
 2. Configure API keys
 3. Install all dependencies
 4. Set up OAuth connections
+
+### Connecting GitHub (and other services)
+
+1. Start the application
+2. Click the gear icon in the right sidebar to open "Tool Connections"
+3. Click "Connect" next to GitHub
+4. Complete the OAuth flow in the browser popup
+5. Once connected, you can ask the AI to create repos, push code, etc.
+
+Or via CLI:
+```bash
+composio add github
+```
 
 ### Manual Installation
 

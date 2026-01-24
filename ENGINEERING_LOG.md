@@ -420,3 +420,287 @@ export type Workflow = WorkflowTemplate;
 **Social:** LinkedIn, Twitter/X
 **Calendar:** Google Calendar
 **Default:** Generic tool icon for unknown services
+
+---
+
+## Session: January 23, 2026 (Evening)
+
+### Overview
+Implemented Document Handling Architecture (persistent Knowledge Base + ephemeral session context), UI improvements (resizable sidebars, grouped model selector), and verified GitHub integration via Composio.
+
+---
+
+## Changes Made
+
+### 1. Document Context Injection (Persistent Knowledge Base)
+
+**Problem:** Knowledge Base toggle had no effect on chat behavior - documents weren't being injected into context.
+
+**Solution:**
+
+#### A. Updated Chat Service
+**File Modified:** `renderer/src/services/chatService.ts`
+
+```typescript
+export interface ChatOptions {
+  documentIds?: string[];      // Persistent KB document IDs
+  ephemeralContext?: string;   // Session-only context
+}
+
+export async function* streamChat(
+  message: string,
+  chatId: string,
+  provider: string,
+  model: string | null,
+  options?: ChatOptions
+): AsyncGenerator<StreamChunk>
+```
+
+#### B. Backend Document Fetching
+**File Modified:** `server/lib/supabase.js`
+
+```javascript
+// Fetch chunks for multiple documents with pagination
+export async function fetchChunksForDocuments(documentIds, options = {})
+
+// Get document metadata for formatting
+export async function getDocumentsByIds(documentIds)
+```
+
+#### C. Context Building
+**File Modified:** `server/server.js`
+
+```javascript
+async function buildDocumentContext(documentIds, ephemeralContext) {
+  // Combines persistent KB chunks with ephemeral context
+  // Returns formatted <context><document>...</document></context>
+}
+```
+
+---
+
+### 2. Ephemeral Session Context (Pattern B)
+
+**Problem:** Users couldn't quickly add files to chat context without cluttering the Knowledge Base.
+
+**Solution:**
+
+#### A. File Extraction Utility
+**File Created:** `renderer/src/utils/fileExtractor.ts`
+
+- **Client-side extraction:** txt, md, json, csv
+- **Server-side extraction:** pdf, docx (via Docling)
+- Validates file type and size (5MB max for ephemeral)
+
+#### B. ContextChips Component
+**File Created:** `renderer/src/components/ContextChips.tsx`
+
+- Displays ephemeral docs as pills above chat input
+- Drag-and-drop file support
+- Click to toggle active/inactive
+- "X" to remove from context
+- Uses `forwardRef` to expose `triggerFileSelect()` method
+
+#### C. Server Extraction Endpoint
+**File Modified:** `server/routes/documents.js`
+
+```javascript
+// POST /api/documents/extract
+// Parses file with Docling but doesn't persist to Supabase
+router.post('/extract', upload.single('file'), async (req, res) => {
+  const result = await doclingClient.parseSync(buffer, originalname, {
+    skipStorage: true
+  });
+  res.json({ content: fullText, metadata: {...} });
+});
+```
+
+#### D. Type Definition
+**File Modified:** `renderer/src/types/index.ts`
+
+```typescript
+export interface EphemeralDocument {
+  id: string;
+  name: string;
+  type: string;
+  content: string;
+  isActive: boolean;
+  addedAt: number;
+  expiresAt?: number;
+}
+```
+
+---
+
+### 3. Resizable Sidebar Handles
+
+**Problem:** Fixed sidebar widths weren't optimal for all screen sizes.
+
+**Solution:**
+
+#### A. ResizeHandle Component
+**File Created:** `renderer/src/components/ResizeHandle.tsx`
+
+```typescript
+interface ResizeHandleProps {
+  onResize: (delta: number) => void;
+  position: 'left' | 'right';
+}
+```
+
+- 4px wide draggable handle
+- Cursor changes to `col-resize` on hover
+- Visual feedback during drag (bg-accent)
+- Inverts delta for right sidebar (drag left = increase width)
+
+#### B. App Integration
+**File Modified:** `renderer/src/App.tsx`
+
+```typescript
+// State
+const [leftSidebarWidth, setLeftSidebarWidth] = useState(288);
+const [rightSidebarWidth, setRightSidebarWidth] = useState(320);
+
+// Constraints
+const LEFT_SIDEBAR_MIN = 220;
+const LEFT_SIDEBAR_MAX = 500;
+const RIGHT_SIDEBAR_MIN = 280;
+const RIGHT_SIDEBAR_MAX = 600;
+```
+
+---
+
+### 4. Model Selector Grouped by Provider
+
+**Problem:** Flat list of models made it hard to identify which provider a model belonged to.
+
+**Solution:**
+
+#### A. Updated MODELS Constant
+**File Modified:** `renderer/src/constants/index.tsx`
+
+```typescript
+export const MODELS: ModelOption[] = [
+  // Claude Provider
+  { id: 'claude-sonnet-4-5-20250514', name: 'Sonnet 4.5', provider: 'Claude' },
+  { id: 'claude-opus-4-5-20250514', name: 'Opus 4.5', provider: 'Claude' },
+  { id: 'claude-haiku-4-5-20250514', name: 'Haiku 4.5', provider: 'Claude' },
+  // Opencode Provider
+  { id: 'opencode/big-pickle', name: 'Big Pickle', provider: 'Opencode' },
+  // ... more models
+];
+```
+
+#### B. Grouped Dropdown
+**File Modified:** `renderer/src/components/ChatArea.tsx`
+
+- Dropdown shows "CLAUDE" and "OPENCODE" section headers
+- Checkmark indicator on selected model
+- Click-outside handler to close dropdown
+
+---
+
+### 5. Dropdown Click-Outside Fix
+
+**Problem:** Model selector dropdown didn't close when clicking outside.
+
+**Solution:**
+
+**File Modified:** `renderer/src/components/ChatArea.tsx`
+
+```typescript
+const modelDropdownRef = useRef<HTMLDivElement>(null);
+
+useEffect(() => {
+  const handleClickOutside = (event: MouseEvent) => {
+    if (modelDropdownRef.current &&
+        !modelDropdownRef.current.contains(event.target as Node)) {
+      setShowModels(false);
+    }
+  };
+
+  if (showModels) {
+    document.addEventListener('mousedown', handleClickOutside);
+  }
+  return () => document.removeEventListener('mousedown', handleClickOutside);
+}, [showModels]);
+```
+
+---
+
+### 6. GitHub Integration via Composio
+
+**Verification:** GitHub tools are available through Composio MCP when user connects their GitHub account.
+
+**Available Actions:**
+- `GITHUB_CREATE_REPOSITORY` - Create new repos
+- `GITHUB_PUSH_FILES` - Push files to repos
+- `GITHUB_CREATE_PULL_REQUEST` - Create PRs
+- `GITHUB_CREATE_ISSUE` - Create issues
+- And many more via Composio's GitHub integration
+
+**How It Works:**
+1. User connects GitHub via Composio OAuth (Tool Connections modal)
+2. Composio provides MCP endpoint with GitHub tools
+3. Claude Agent SDK calls tools via MCP
+4. User can ask: "Create a new repo called my-app and add a README"
+
+---
+
+## Files Changed Summary
+
+| File | Changes |
+|------|---------|
+| `renderer/src/services/chatService.ts` | Added ChatOptions, documentIds, ephemeralContext |
+| `renderer/src/App.tsx` | Ephemeral state, sidebar widths, resize handlers |
+| `renderer/src/components/ChatArea.tsx` | Grouped model selector, click-outside handler |
+| `renderer/src/components/ContextChips.tsx` | **NEW** - Ephemeral context UI |
+| `renderer/src/components/ResizeHandle.tsx` | **NEW** - Draggable resize handles |
+| `renderer/src/utils/fileExtractor.ts` | **NEW** - Client/server file extraction |
+| `renderer/src/types/index.ts` | Added EphemeralDocument type |
+| `renderer/src/constants/index.tsx` | Updated MODELS with more options |
+| `server/server.js` | buildDocumentContext(), context injection |
+| `server/lib/supabase.js` | fetchChunksForDocuments(), getDocumentsByIds() |
+| `server/routes/documents.js` | /extract endpoint for ephemeral files |
+
+---
+
+## Testing Notes
+
+- Document context injection verified: KB toggle now affects chat
+- Ephemeral context: Drag-drop files appear as chips, content injected
+- Resizable sidebars: Drag handles work with proper constraints
+- Model selector: Groups display correctly, closes on outside click
+- GitHub via Composio: Tool connections UI shows GitHub, tools available via MCP
+
+---
+
+## Architecture: Document Context Flow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         FRONTEND                                 │
+├─────────────────────────────────────────────────────────────────┤
+│  Sidebar                    │  Chat Area                        │
+│  ┌─────────────────────┐   │  ┌─────────────────────────────┐  │
+│  │ Knowledge Base      │   │  │ Messages                    │  │
+│  │ (Persistent)        │   │  └─────────────────────────────┘  │
+│  │ [✓] report.pdf      │   │  ┌─────────────────────────────┐  │
+│  │ [ ] old-notes.md    │   │  │ Context Chips (Ephemeral)   │  │
+│  └─────────────────────┘   │  │ [📄 temp.txt ×] [📄 mtg.md ×]│  │
+│                             │  └─────────────────────────────┘  │
+│                             │  ┌─────────────────────────────┐  │
+│                             │  │ [+] [Input...      ] [Send] │  │
+│                             │  └─────────────────────────────┘  │
+└─────────────────────────────┴───────────────────────────────────┘
+                              │
+                              ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                         BACKEND                                  │
+├─────────────────────────────────────────────────────────────────┤
+│  POST /api/chat                                                  │
+│  ├─ documentIds: [id1, id2] → Fetch chunks from Supabase        │
+│  ├─ ephemeralContext: "..." → Already extracted, just use it    │
+│  └─ Combine into context → Send to LLM provider                 │
+└─────────────────────────────────────────────────────────────────┘
+```

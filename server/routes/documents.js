@@ -488,6 +488,77 @@ router.delete('/:id', async (req, res) => {
 });
 
 /**
+ * POST /api/documents/extract
+ * Extract text from a file without storing it (for ephemeral context)
+ * File is processed and immediately discarded
+ */
+router.post('/extract', upload.single('file'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file provided' });
+  }
+
+  const { originalname, buffer, mimetype } = req.file;
+  const fileType = path.extname(originalname).slice(1).toLowerCase();
+
+  log.info({
+    filename: originalname,
+    size: buffer.length,
+    mimetype
+  }, 'Ephemeral extraction started');
+
+  // Only process complex files that need Docling
+  const complexTypes = ['pdf', 'docx', 'doc'];
+  if (!complexTypes.includes(fileType)) {
+    return res.status(400).json({
+      error: 'Unsupported file type for server extraction',
+      message: `File type ${fileType} should be extracted client-side`
+    });
+  }
+
+  try {
+    // Parse with Docling but DON'T store in Supabase
+    const result = await doclingClient.parseSync(buffer, originalname, {
+      chunkSize: 2000, // Larger chunks for context
+      extractTables: true,
+      skipStorage: true // Signal to not store (if applicable)
+    });
+
+    if (result.status !== 'completed') {
+      throw new Error(result.error || 'Extraction failed');
+    }
+
+    // Combine all chunks into full text
+    const fullText = result.chunks
+      .map(chunk => chunk.content || chunk.text)
+      .join('\n\n');
+
+    log.info({
+      filename: originalname,
+      chunksCount: result.chunks.length,
+      textLength: fullText.length,
+      processingTimeMs: result.processing_time_ms
+    }, 'Ephemeral extraction completed');
+
+    // Return extracted content - file is discarded after this response
+    res.json({
+      content: fullText,
+      metadata: {
+        filename: originalname,
+        type: fileType,
+        chunksCount: result.chunks.length,
+        processingTimeMs: result.processing_time_ms
+      }
+    });
+  } catch (error) {
+    log.error({ filename: originalname, error: error.message }, 'Ephemeral extraction failed');
+    res.status(500).json({
+      error: 'Extraction failed',
+      message: error.message
+    });
+  }
+});
+
+/**
  * POST /api/documents/:id/reprocess
  * Reprocess a document
  */

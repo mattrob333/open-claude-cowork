@@ -3,12 +3,16 @@ import React from 'react';
 import { ModelOption } from '../types';
 
 export const MODELS: ModelOption[] = [
-  { id: 'claude-sonnet-4-5-20250514', name: 'Claude Sonnet 4.5', provider: 'Claude' },
-  { id: 'claude-opus-4-5-20250514', name: 'Claude Opus 4.5', provider: 'Claude' },
-  { id: 'claude-haiku-4-5-20250514', name: 'Claude Haiku 4.5', provider: 'Claude' },
+  // Claude Provider Models
+  { id: 'claude-sonnet-4-5-20250514', name: 'Sonnet 4.5', provider: 'Claude' },
+  { id: 'claude-opus-4-5-20250514', name: 'Opus 4.5', provider: 'Claude' },
+  { id: 'claude-haiku-4-5-20250514', name: 'Haiku 4.5', provider: 'Claude' },
+  // Opencode Provider Models
   { id: 'opencode/big-pickle', name: 'Big Pickle', provider: 'Opencode' },
   { id: 'opencode/gpt-5-nano', name: 'GPT-5 Nano', provider: 'Opencode' },
-  { id: 'anthropic/claude-sonnet-4-5-20250929', name: 'Claude Sonnet 4.5 (OC)', provider: 'Opencode' },
+  { id: 'opencode/grok-code', name: 'Grok Code', provider: 'Opencode' },
+  { id: 'opencode/glm-4.7-free', name: 'GLM 4.7', provider: 'Opencode' },
+  { id: 'opencode/minimax-m2.1-free', name: 'MiniMax 2.1', provider: 'Opencode' },
 ];
 
 export const ICONS = {

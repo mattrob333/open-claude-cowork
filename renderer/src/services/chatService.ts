@@ -1,16 +1,29 @@
 import { SERVER_URL } from '../constants';
 import { StreamChunk } from '../types';
 
+export interface ChatOptions {
+  documentIds?: string[];
+  ephemeralContext?: string;
+}
+
 export async function* streamChat(
   message: string,
   chatId: string,
   provider: string,
-  model: string | null
+  model: string | null,
+  options?: ChatOptions
 ): AsyncGenerator<StreamChunk> {
   const response = await fetch(`${SERVER_URL}/api/chat`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message, chatId, provider, model })
+    body: JSON.stringify({
+      message,
+      chatId,
+      provider,
+      model,
+      documentIds: options?.documentIds,
+      ephemeralContext: options?.ephemeralContext
+    })
   });
 
   if (!response.ok) {

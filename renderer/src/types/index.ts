@@ -149,6 +149,17 @@ export interface KnowledgeAsset {
   isActive: boolean;
 }
 
+// Ephemeral document for session context (not persisted)
+export interface EphemeralDocument {
+  id: string;
+  name: string;
+  type: string;
+  content: string;          // Extracted text content
+  isActive: boolean;        // Include in current chat context
+  addedAt: number;          // Timestamp when added
+  expiresAt?: number;       // Optional auto-cleanup timestamp
+}
+
 export interface Document {
   id: string;
   name: string;

@@ -14,6 +14,7 @@ import logger from './lib/logger.js';
 import workflowsRouter, { loadWorkflows } from './routes/workflows.js';
 import documentsRouter from './routes/documents.js';
 import sourcesRouter from './routes/sources.js';
+import { fetchChunksForDocuments, getDocumentsByIds } from './lib/supabase.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -162,6 +163,50 @@ const staticPath = isProduction
 
 app.use(express.static(staticPath));
 
+// Helper to format document chunks as context
+async function buildDocumentContext(documentIds, ephemeralContext) {
+  let contextParts = [];
+
+  // Add ephemeral context (already extracted text from frontend)
+  if (ephemeralContext && ephemeralContext.trim()) {
+    contextParts.push(ephemeralContext);
+  }
+
+  // Fetch and format persistent document chunks
+  if (documentIds && documentIds.length > 0) {
+    const { chunks, error: chunksError } = await fetchChunksForDocuments(documentIds);
+
+    if (!chunksError && chunks.length > 0) {
+      // Get document names for better context
+      const { documents } = await getDocumentsByIds(documentIds);
+      const docNameMap = new Map(documents.map(d => [d.id, d.name]));
+
+      // Group chunks by document
+      const chunksByDoc = new Map();
+      for (const chunk of chunks) {
+        const docId = chunk.document_id;
+        if (!chunksByDoc.has(docId)) {
+          chunksByDoc.set(docId, []);
+        }
+        chunksByDoc.get(docId).push(chunk);
+      }
+
+      // Format each document's chunks
+      for (const [docId, docChunks] of chunksByDoc) {
+        const docName = docNameMap.get(docId) || 'Unknown Document';
+        const content = docChunks.map(c => c.content).join('\n\n');
+        contextParts.push(`<document name="${docName}">\n${content}\n</document>`);
+      }
+    }
+  }
+
+  if (contextParts.length === 0) {
+    return null;
+  }
+
+  return `<context>\nThe following documents have been provided as reference material:\n\n${contextParts.join('\n\n')}\n</context>`;
+}
+
 // Chat endpoint using provider abstraction
 app.post('/api/chat', validateChatRequest, async (req, res) => {
   const {
@@ -169,14 +214,18 @@ app.post('/api/chat', validateChatRequest, async (req, res) => {
     chatId,
     userId = 'default-user',
     provider: providerName = 'claude',  // Per-request provider selection
-    model = null  // Per-request model selection
+    model = null,  // Per-request model selection
+    documentIds = [],  // Active Knowledge Base document IDs
+    ephemeralContext = ''  // Ephemeral document content (already extracted)
   } = req.body;
 
   logger.chat.info({
     messagePreview: message.substring(0, 100) + (message.length > 100 ? '...' : ''),
     chatId,
     provider: providerName,
-    model: model || '(default)'
+    model: model || '(default)',
+    documentCount: documentIds?.length || 0,
+    hasEphemeralContext: !!ephemeralContext
   }, 'Chat request received');
 
   // Validate provider
@@ -234,10 +283,20 @@ app.post('/api/chat', validateChatRequest, async (req, res) => {
 
     logger.chat.debug({ provider: provider.name, sessionCount: provider.sessions.size }, 'Using provider');
 
+    // Build document context if documents are active
+    const documentContext = await buildDocumentContext(documentIds, ephemeralContext);
+
+    // Prepare the enhanced prompt with document context
+    let enhancedPrompt = message;
+    if (documentContext) {
+      enhancedPrompt = `${documentContext}\n\nUser: ${message}`;
+      logger.chat.debug({ contextLength: documentContext.length }, 'Added document context to prompt');
+    }
+
     // Stream responses from the provider
     try {
       for await (const chunk of provider.query({
-        prompt: message,
+        prompt: enhancedPrompt,
         chatId,
         userId,
         mcpServers,

@@ -1,9 +1,10 @@
 
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-import { Session, Message, Role, ModelOption } from '../types';
+import { Session, Message, Role, ModelOption, EphemeralDocument } from '../types';
 import { MODELS, ICONS } from '../constants';
+import ContextChips, { ContextChipsHandle } from './ContextChips';
 
 // Configure marked for safe rendering
 marked.setOptions({
@@ -19,6 +20,11 @@ interface ChatAreaProps {
   currentModel: ModelOption;
   onModelChange: (model: ModelOption) => void;
   onSaveWorkflow: () => void;
+  // Ephemeral context props
+  ephemeralDocs: EphemeralDocument[];
+  onAddEphemeralDoc: (doc: EphemeralDocument) => void;
+  onRemoveEphemeralDoc: (id: string) => void;
+  onToggleEphemeralDoc: (id: string) => void;
 }
 
 const ChatArea: React.FC<ChatAreaProps> = ({
@@ -28,7 +34,11 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   isTyping,
   currentModel,
   onModelChange,
-  onSaveWorkflow
+  onSaveWorkflow,
+  ephemeralDocs,
+  onAddEphemeralDoc,
+  onRemoveEphemeralDoc,
+  onToggleEphemeralDoc
 }) => {
   const [inputText, setInputText] = useState('');
   const [showModels, setShowModels] = useState(false);
@@ -37,6 +47,25 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   const [editContent, setEditContent] = useState<string>('');
   const [editedMessages, setEditedMessages] = useState<Record<string, string>>({});
   const scrollRef = useRef<HTMLDivElement>(null);
+  const contextChipsRef = useRef<ContextChipsHandle>(null);
+  const modelDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close model dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (modelDropdownRef.current && !modelDropdownRef.current.contains(event.target as Node)) {
+        setShowModels(false);
+      }
+    };
+
+    if (showModels) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showModels]);
 
   const handleStartEdit = (msgId: string, content: string) => {
     setEditingId(msgId);
@@ -272,25 +301,43 @@ const ChatArea: React.FC<ChatAreaProps> = ({
             <span className="hidden sm:inline">Save as Workflow</span>
           </button>
 
-          <div className="relative">
-            <button 
+          <div className="relative" ref={modelDropdownRef}>
+            <button
               onClick={() => setShowModels(!showModels)}
               className="flex items-center gap-1.5 bg-card border border-border px-4 py-1.5 rounded-full text-xs text-primaryText hover:border-accent transition-all"
             >
               <ICONS.Cpu />
-              <span>Model Selector</span>
+              <span>{currentModel.name}</span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform ${showModels ? 'rotate-180' : ''}`}>
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
             </button>
 
             {showModels && (
-              <div className="absolute right-0 mt-3 w-56 bg-card border border-border rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.6)] z-[60] p-1.5 overflow-hidden">
-                <div className="text-[10px] uppercase text-secondaryText px-4 py-3 font-bold tracking-widest border-b border-white/5 mb-1">Select Core Engine</div>
-                {MODELS.map(m => (
+              <div className="absolute right-0 mt-3 w-64 bg-card border border-border rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.6)] z-[60] p-1.5 overflow-hidden max-h-[400px] overflow-y-auto">
+                {/* Claude Models */}
+                <div className="text-[10px] uppercase text-secondaryText px-4 py-2 font-bold tracking-widest border-b border-white/5 mb-1">Claude</div>
+                {MODELS.filter(m => m.provider === 'Claude').map(m => (
                   <button
                     key={m.id}
                     onClick={() => { onModelChange(m); setShowModels(false); }}
-                    className={`w-full text-left px-4 py-2.5 text-sm rounded-xl transition-all ${currentModel.id === m.id ? 'text-accent bg-accent/10 font-bold' : 'text-primaryText hover:bg-hover'}`}
+                    className={`w-full text-left px-4 py-2 text-sm rounded-xl transition-all flex items-center justify-between ${currentModel.id === m.id ? 'text-accent bg-accent/10 font-bold' : 'text-primaryText hover:bg-hover'}`}
                   >
-                    {m.name}
+                    <span>{m.name}</span>
+                    {currentModel.id === m.id && <ICONS.CheckCircle />}
+                  </button>
+                ))}
+
+                {/* Opencode Models */}
+                <div className="text-[10px] uppercase text-secondaryText px-4 py-2 font-bold tracking-widest border-b border-white/5 mt-2 mb-1">Opencode</div>
+                {MODELS.filter(m => m.provider === 'Opencode').map(m => (
+                  <button
+                    key={m.id}
+                    onClick={() => { onModelChange(m); setShowModels(false); }}
+                    className={`w-full text-left px-4 py-2 text-sm rounded-xl transition-all flex items-center justify-between ${currentModel.id === m.id ? 'text-accent bg-accent/10 font-bold' : 'text-primaryText hover:bg-hover'}`}
+                  >
+                    <span>{m.name}</span>
+                    {currentModel.id === m.id && <ICONS.CheckCircle />}
                   </button>
                 ))}
               </div>
@@ -324,9 +371,25 @@ const ChatArea: React.FC<ChatAreaProps> = ({
 
       {/* Floating Input Area */}
       <div className="px-10 pb-10 pt-4 bg-gradient-to-t from-panel via-panel to-transparent">
-        <div className="max-w-4xl mx-auto bg-card border border-border rounded-[32px] p-2.5 flex items-end gap-3 shadow-2xl focus-within:border-accent transition-all ring-accent/0 focus-within:ring-4 ring-offset-panel ring-offset-0 transition-all duration-300">
-          <button className="p-3 text-secondaryText hover:text-primaryText hover:bg-hover rounded-full transition-all">
-            <ICONS.Paperclip />
+        <div className="max-w-4xl mx-auto">
+          {/* Context Chips - Ephemeral Documents (only shows when there are documents) */}
+          <ContextChips
+            ref={contextChipsRef}
+            documents={ephemeralDocs}
+            onAdd={onAddEphemeralDoc}
+            onRemove={onRemoveEphemeralDoc}
+            onToggle={onToggleEphemeralDoc}
+            disabled={isTyping}
+          />
+
+          {/* Input Box */}
+          <div className="bg-card border border-border rounded-[32px] p-2.5 flex items-end gap-3 shadow-2xl focus-within:border-accent transition-all ring-accent/0 focus-within:ring-4 ring-offset-panel ring-offset-0 transition-all duration-300">
+          <button
+            onClick={() => contextChipsRef.current?.triggerFileSelect()}
+            className="p-3 text-secondaryText hover:text-primaryText hover:bg-hover rounded-full transition-all"
+            title="Add file to context"
+          >
+            <ICONS.Plus />
           </button>
           <textarea
             value={inputText}
@@ -342,13 +405,14 @@ const ChatArea: React.FC<ChatAreaProps> = ({
               target.style.height = target.scrollHeight + 'px';
             }}
           />
-          <button 
+          <button
             onClick={handleSend}
             disabled={!inputText.trim() || isTyping}
             className={`w-11 h-11 flex items-center justify-center rounded-full transition-all shrink-0 ${inputText.trim() && !isTyping ? 'bg-accent text-canvas hover:scale-105 shadow-[0_0_20px_rgba(217,119,87,0.4)]' : 'bg-hover text-secondaryText'}`}
           >
             <ICONS.ArrowUp />
           </button>
+          </div>
         </div>
         <div className="text-center text-[10px] text-secondaryText mt-4 uppercase tracking-[0.2em] opacity-40 font-bold">
           Omni-Channel Agent Engine • Ready for Tasking

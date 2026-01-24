@@ -323,6 +323,91 @@ export async function storeChunks(documentId, userId, chunks) {
   return { count: data?.length || 0, error: null };
 }
 
+/**
+ * Fetch chunks for multiple documents
+ * @param {string[]} documentIds - Array of document IDs
+ * @param {Object} options - Query options
+ * @returns {Promise<{chunks: Object[], error: string | null}>}
+ */
+export async function fetchChunksForDocuments(documentIds, options = {}) {
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    return { chunks: [], error: 'Supabase not configured' };
+  }
+
+  if (!documentIds || documentIds.length === 0) {
+    return { chunks: [], error: null };
+  }
+
+  const { maxChunksPerDoc = 50, maxTotalChunks = 200 } = options;
+
+  try {
+    // Fetch chunks for all documents, ordered by document and chunk index
+    const { data, error } = await supabase
+      .from('document_chunks')
+      .select('id, document_id, content, chunk_index, page_number, metadata')
+      .in('document_id', documentIds)
+      .order('document_id', { ascending: true })
+      .order('chunk_index', { ascending: true })
+      .limit(maxTotalChunks);
+
+    if (error) {
+      log.error({ error: error.message }, 'Failed to fetch document chunks');
+      return { chunks: [], error: error.message };
+    }
+
+    // Group by document and limit chunks per document
+    const chunksByDoc = new Map();
+    for (const chunk of data || []) {
+      const docChunks = chunksByDoc.get(chunk.document_id) || [];
+      if (docChunks.length < maxChunksPerDoc) {
+        docChunks.push(chunk);
+        chunksByDoc.set(chunk.document_id, docChunks);
+      }
+    }
+
+    // Flatten back to array
+    const limitedChunks = [];
+    for (const docChunks of chunksByDoc.values()) {
+      limitedChunks.push(...docChunks);
+    }
+
+    log.info({ documentCount: documentIds.length, chunkCount: limitedChunks.length }, 'Fetched document chunks');
+    return { chunks: limitedChunks, error: null };
+  } catch (err) {
+    log.error({ error: err.message }, 'Error fetching document chunks');
+    return { chunks: [], error: err.message };
+  }
+}
+
+/**
+ * Get document names by IDs (for context formatting)
+ * @param {string[]} documentIds - Array of document IDs
+ * @returns {Promise<{documents: Object[], error: string | null}>}
+ */
+export async function getDocumentsByIds(documentIds) {
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    return { documents: [], error: 'Supabase not configured' };
+  }
+
+  if (!documentIds || documentIds.length === 0) {
+    return { documents: [], error: null };
+  }
+
+  const { data, error } = await supabase
+    .from('documents')
+    .select('id, name, type')
+    .in('id', documentIds);
+
+  if (error) {
+    log.error({ error: error.message }, 'Failed to fetch documents by IDs');
+    return { documents: [], error: error.message };
+  }
+
+  return { documents: data || [], error: null };
+}
+
 export default {
   supabase: getSupabaseClient,
   isSupabaseConfigured,
@@ -334,5 +419,7 @@ export default {
   getDocument,
   listDocuments,
   deleteDocument,
-  storeChunks
+  storeChunks,
+  fetchChunksForDocuments,
+  getDocumentsByIds
 };
