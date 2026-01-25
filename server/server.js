@@ -16,6 +16,7 @@ import documentsRouter from './routes/documents.js';
 import sourcesRouter from './routes/sources.js';
 import skillsRouter from './routes/skills.js';
 import emailTemplatesRouter from './routes/email-templates.js';
+import personalContextRouter from './routes/personal-context.js';
 import { fetchChunksForDocuments, getDocumentsByIds } from './lib/supabase.js';
 import { loadSkills } from './lib/skill-loader.js';
 import { matchSkills, buildSystemPromptWithSkills, stripSkillInvocations } from './lib/skill-matcher.js';
@@ -456,6 +457,28 @@ app.use('/api/skills', skillsRouter);
 // Mount email templates router for email template management
 app.use('/api/email-templates', emailTemplatesRouter);
 
+// Mount personal context router for user profile/context management
+app.use('/api/user/personal-context', personalContextRouter);
+
+// POST /api/composio/auth-url - Get Composio OAuth URL for a specific app
+app.post('/api/composio/auth-url', async (req, res) => {
+  const { app: appName } = req.body;
+  
+  if (!appName) {
+    return res.status(400).json({ error: 'App name is required' });
+  }
+
+  try {
+    // For now, return the Composio app connection URL
+    // In production, this would use Composio SDK to generate proper OAuth URLs
+    const url = `https://app.composio.dev/apps/${appName}`;
+    res.json({ url, app: appName });
+  } catch (error) {
+    logger.error({ error: error.message, app: appName }, 'Failed to get auth URL');
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // POST /api/workflows/run - Run a workflow with variables (needs Composio access)
 app.post('/api/workflows/run', validateWorkflowRun, async (req, res) => {
   const {
@@ -463,7 +486,8 @@ app.post('/api/workflows/run', validateWorkflowRun, async (req, res) => {
     variables = {},
     provider: providerName = 'claude',
     model = null,
-    userId = 'default-user'
+    userId = 'default-user',
+    workflow: clientWorkflow = null  // Accept workflow from frontend
   } = req.body;
 
   logger.workflow.info({
@@ -472,15 +496,19 @@ app.post('/api/workflows/run', validateWorkflowRun, async (req, res) => {
     provider: providerName
   }, 'Workflow run started');
 
-  const workflows = loadWorkflows().workflows;
-  const workflow = workflows.find(w => w.id === workflowId);
-
+  // Try to find workflow: first from client, then from JSON file
+  let workflow = clientWorkflow;
   if (!workflow) {
-    return res.status(404).json({ error: 'Workflow not found' });
+    const workflows = loadWorkflows().workflows;
+    workflow = workflows.find(w => w.id === workflowId);
   }
 
-  // Interpolate variables into system prompt
-  let prompt = workflow.systemPrompt;
+  if (!workflow) {
+    return res.status(404).json({ error: 'Workflow not found. Pass workflow object in request body.' });
+  }
+
+  // Use goldenInstructions or systemPrompt
+  let prompt = workflow.goldenInstructions || workflow.systemPrompt || '';
   for (const [key, value] of Object.entries(variables)) {
     prompt = prompt.replace(new RegExp(`{{${key}}}`, 'g'), value);
   }

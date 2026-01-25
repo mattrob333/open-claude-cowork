@@ -1,5 +1,74 @@
 # Engineering Log - Open Claude Cowork
 
+## Session: January 24, 2026
+
+### Overview
+Implemented a simple user-facing onboarding wizard, removed the complex workflow-based onboarding system, and cleaned up the repository.
+
+---
+
+## Changes Made
+
+### 1. New Onboarding Modal Component
+
+**Files Created:**
+- `renderer/src/components/OnboardingModal.tsx`
+
+**Description:**
+Created a simple 3-step onboarding wizard for new users:
+
+1. **Welcome Screen** - Greeting with explanation of Claude Agent SDK + Composio capabilities
+2. **Tool Selection** - Checkboxes for Gmail, Calendar, GitHub, Slack, Notion, Linear, Google Drive, Google Sheets
+3. **Connection Links** - Clickable links to Composio OAuth for each selected tool
+
+**Features:**
+- Clean modal UI with solid dark background (`#1a1a1a`)
+- Progress through steps with Back/Continue buttons
+- Skip option to bypass onboarding
+- LocalStorage flags: `onboarding_completed`, `selected_tools`
+- Fetches auth URLs from backend `/api/composio/auth-url` endpoint
+
+---
+
+### 2. Composio Auth URL Endpoint
+
+**Files Modified:**
+- `server/server.js`
+
+**Description:**
+Added `POST /api/composio/auth-url` endpoint that returns Composio OAuth URLs for specified apps. Currently returns direct Composio app URLs; can be enhanced to use Composio SDK for proper OAuth flow.
+
+---
+
+### 3. Removed "Start Here" Workflow
+
+**Files Modified:**
+- `renderer/src/lib/workflowStorage.ts`
+- `renderer/src/App.tsx`
+
+**Problem:** The workflow-based onboarding showed internal AI thought streaming, which was confusing for end users.
+
+**Solution:**
+- Disabled `seedDefaultWorkflows()` function - now removes any existing "Start Here" workflow
+- Replaced with simple `OnboardingModal` component
+- App.tsx now shows OnboardingModal on first run based on localStorage flag
+
+---
+
+### 4. Repository Cleanup
+
+**Files Removed from root:**
+- `auditcheck.md`, `bugfix.md`, `current_task.md` - temporary work documents
+- `implementation.md`, `lookup.md` - duplicate spec files
+- `RALPH_README.md`, `ralph_loop_package.zip`, `run_loop.sh` - unused Ralph loop files
+- `README1.md` - duplicate README
+
+**Files Kept:**
+- `CLAUDE.md` - AI assistant context file
+- `workflow_system_spec.md` - detailed workflow specification
+
+---
+
 ## Session: January 22, 2026
 
 ### Overview

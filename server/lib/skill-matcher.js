@@ -96,6 +96,62 @@ To use a skill that isn't active, you can mention it to the user or incorporate 
 }
 
 /**
+ * Workflow System Instructions
+ * Included in system prompt to guide AI on workflow saving behavior
+ */
+const WORKFLOW_SYSTEM_INSTRUCTIONS = `<workflow-system>
+## Workflow Saving
+
+When the user asks to save a workflow, OR when you receive a message containing "WORKFLOW_EXTRACTION_REQUEST", you should:
+
+1. Analyze the conversation to understand what was accomplished
+2. Generate ALL of the following yourself (do NOT ask the user):
+   - name: A short, catchy name (2-4 words)
+   - icon: An appropriate emoji
+   - description: One sentence explaining what it does
+   - steps: 3-7 clear steps describing the process
+   - tools: List of integrations/tools used (e.g., "google_calendar", "web_search")
+   - goldenInstructions: The complete prompt/instructions to reproduce this workflow
+
+3. Return your response with the following JSON structure embedded at the end:
+
+\`\`\`json:workflow_approval
+{
+  "name": "Morning Briefing",
+  "icon": "🌅",
+  "description": "Daily briefing with calendar, tasks, and priorities",
+  "steps": [
+    {"name": "Fetch Calendar", "description": "Get today's calendar events", "tools": ["google_calendar"]},
+    {"name": "Review Tasks", "description": "Check pending tasks and deadlines", "tools": ["task_manager"]},
+    {"name": "Generate Summary", "description": "Create prioritized daily briefing", "tools": []}
+  ],
+  "tools": ["google_calendar", "task_manager"],
+  "goldenInstructions": "You are a personal assistant helping create a morning briefing. First, fetch today's calendar events..."
+}
+\`\`\`
+
+IMPORTANT:
+- Generate the name and description yourself based on the conversation
+- Do NOT ask the user "what would you like to name it?" - you decide everything
+- Do NOT create Python files or JSON files on disk
+- The workflow is saved when the user clicks Approve in the UI
+
+## Auto-Detect Workflow Opportunities
+
+After completing a multi-step task that used 2+ tools, consider suggesting to save it as a workflow.
+Add a suggestion at the end of your response:
+
+\`\`\`json:workflow_suggestion
+{
+  "suggestedName": "Begin the Day",
+  "icon": "🌅"
+}
+\`\`\`
+
+This will render as a button the user can click to trigger the full workflow extraction flow.
+</workflow-system>`;
+
+/**
  * Build enhanced system prompt with skills and document context
  * @param {string | null} basePrompt - Base system prompt
  * @param {Skill[]} activeSkills - Active skills to inject (full content)
@@ -111,7 +167,10 @@ export function buildSystemPromptWithSkills(basePrompt, activeSkills, documentCo
     parts.push(basePrompt);
   }
 
-  // 2. Add skills manifest (all available skills)
+  // 2. Add workflow system instructions
+  parts.push(WORKFLOW_SYSTEM_INSTRUCTIONS);
+
+  // 3. Add skills manifest (all available skills)
   if (availableSkills && availableSkills.length > 0) {
     const activeIds = new Set((activeSkills || []).map(s => s.id));
     const manifest = buildSkillsManifest(availableSkills, activeIds);
@@ -120,12 +179,12 @@ export function buildSystemPromptWithSkills(basePrompt, activeSkills, documentCo
     }
   }
 
-  // 3. Add document context if provided
+  // 4. Add document context if provided
   if (documentContext && documentContext.trim()) {
     parts.push(documentContext);
   }
 
-  // 4. Add active skills (full content)
+  // 5. Add active skills (full content)
   if (activeSkills && activeSkills.length > 0) {
     const skillsSection = activeSkills.map(skill => {
       const metadata = [];

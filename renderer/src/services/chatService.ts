@@ -118,12 +118,13 @@ export async function* runWorkflow(
   workflowId: string,
   variables: Record<string, string>,
   provider: string,
-  model: string | null
+  model: string | null,
+  workflow?: unknown  // Pass full workflow object for localStorage-based workflows
 ): AsyncGenerator<StreamChunk> {
   const response = await fetch(`${SERVER_URL}/api/workflows/run`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ workflowId, variables, provider, model })
+    body: JSON.stringify({ workflowId, variables, provider, model, workflow })
   });
 
   if (!response.ok) {

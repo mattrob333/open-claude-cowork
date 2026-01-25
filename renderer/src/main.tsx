@@ -5,6 +5,7 @@ import { AuthProvider } from './contexts/AuthContext'
 import './styles/globals.css'
 import './styles/a2ui.css'
 import './styles/workflow.css'
+import './styles/onboarding.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

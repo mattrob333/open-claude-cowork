@@ -13,10 +13,9 @@ import { BottomNavigation, MobileHeader, type MobileView } from './components/mo
 import { Session, Message, Role, ToolLogEntry, KnowledgeAsset, ModelOption, WorkflowTemplate, EphemeralDocument } from './types';
 import { MODELS } from './constants';
 import { streamChat, uploadDocument, getDocuments, getDocumentUrl, ChatOptions } from './services/chatService';
-import { saveWorkflow } from './lib/workflowStorage';
-import { Workflow } from './types/workflow';
 import AuthModal from './components/AuthModal';
-import UserProfileMenu from './components/UserProfileMenu';
+import PersonalContextModal from './components/PersonalContextModal';
+import OnboardingModal from './components/OnboardingModal';
 
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
@@ -149,6 +148,12 @@ function App() {
   // Auth modal
   const [showAuthModal, setShowAuthModal] = useState(false);
 
+  // Personal context modal
+  const [showPersonalContext, setShowPersonalContext] = useState(false);
+
+  // Onboarding modal
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
   // Mobile responsive state
   const [isMobile, setIsMobile] = useState(false);
   const [mobileView, setMobileView] = useState<MobileView>('chat');
@@ -168,6 +173,20 @@ function App() {
   // Get current session and messages
   const currentSession = sessions.find(s => s.id === activeSessionId);
   const currentMessages = activeSessionId ? (messagesBySession[activeSessionId] || []) : [];
+
+  // Show onboarding on first run and clean up old Start Here workflow
+  useEffect(() => {
+    // Import and run cleanup of old Start Here workflow
+    import('./lib/workflowStorage').then(({ seedDefaultWorkflows }) => {
+      seedDefaultWorkflows(); // This now removes the Start Here workflow if it exists
+    });
+    
+    // Show onboarding modal if not completed
+    const onboardingComplete = localStorage.getItem('onboarding_completed');
+    if (!onboardingComplete) {
+      setShowOnboarding(true);
+    }
+  }, []);
 
   // Load documents from backend on mount
   useEffect(() => {
@@ -774,6 +793,7 @@ function App() {
             onWorkflowCaptureEdit={handleWorkflowCaptureEdit}
             onWorkflowCaptureSave={handleWorkflowCaptureSave}
             onOpenAuth={() => setShowAuthModal(true)}
+            onOpenContextFile={() => setShowPersonalContext(true)}
           />
         </ErrorBoundary>
       </div>
@@ -819,10 +839,6 @@ function App() {
             <AgentStudio
               toolLogs={toolLogs}
               onClear={handleClearLogs}
-              onSelectWorkflow={(wf) => {
-                handleSelectWorkflow(wf);
-                if (isMobile) setShowRightDrawer(false);
-              }}
               onOpenConnections={() => setShowToolConnections(true)}
               activeSkillIds={activeSkillIds}
               onToggleSkill={handleToggleSkill}
@@ -895,6 +911,19 @@ function App() {
       <AuthModal
         isOpen={showAuthModal}
         onClose={() => setShowAuthModal(false)}
+      />
+
+      {/* Personal Context Modal */}
+      <PersonalContextModal
+        isOpen={showPersonalContext}
+        onClose={() => setShowPersonalContext(false)}
+      />
+
+      {/* Onboarding Modal */}
+      <OnboardingModal
+        isOpen={showOnboarding}
+        onClose={() => setShowOnboarding(false)}
+        onComplete={() => setShowOnboarding(false)}
       />
     </div>
   );

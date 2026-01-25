@@ -402,6 +402,8 @@ router.get('/:id/execute', async (req, res) => {
   const userId = getUserId(req);
   const workflowId = req.params.id;
   const variables = req.query.variables ? JSON.parse(req.query.variables) : {};
+  // Accept workflow from query params for localStorage-based workflows
+  const clientWorkflow = req.query.workflow ? JSON.parse(req.query.workflow) : null;
 
   // Set up SSE headers
   res.setHeader('Content-Type', 'text/event-stream');
@@ -425,8 +427,8 @@ router.get('/:id/execute', async (req, res) => {
   });
 
   try {
-    // Execute the workflow
-    await workflowExecutor.execute(workflowId, variables, sseWriter);
+    // Execute the workflow (pass clientWorkflow for localStorage-based workflows)
+    await workflowExecutor.execute(workflowId, variables, sseWriter, clientWorkflow);
   } catch (error) {
     logger.error({ error: error.message, workflowId }, 'Failed to execute workflow');
     sseWriter.write('run_error', { error: error.message });

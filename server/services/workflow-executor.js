@@ -50,12 +50,15 @@ class WorkflowExecutor {
    * @param {SSEWriter} sseWriter - SSE response writer
    * @returns {Promise<void>}
    */
-  async execute(workflowId, variables, sseWriter) {
-    const log = logger.child({ workflowId, service: 'workflow-executor' });
+  async execute(workflowId, variables, sseWriter, clientWorkflow = null) {
+    const log = logger.workflow.child({ workflowId });
 
     try {
-      // Get workflow
-      const workflow = await workflowService.getWorkflow(workflowId);
+      // Get workflow - use clientWorkflow if provided (for localStorage-based workflows)
+      let workflow = clientWorkflow;
+      if (!workflow) {
+        workflow = await workflowService.getWorkflow(workflowId);
+      }
       if (!workflow) {
         sseWriter.write('run_error', { error: 'Workflow not found' });
         sseWriter.close();

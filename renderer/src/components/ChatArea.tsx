@@ -11,7 +11,58 @@ import {
   OutputConfigArtifact
 } from './WorkflowCaptureArtifacts';
 import WorkflowApprovalCard from './WorkflowApprovalCard';
+import WorkflowSuggestion from './Workflow/WorkflowSuggestion';
 import UserProfileMenu from './UserProfileMenu';
+
+// Types for workflow data extracted from AI responses
+interface WorkflowApprovalData {
+  name: string;
+  icon: string;
+  description: string;
+  steps: { name: string; description: string; tools: string[] }[];
+  tools: string[];
+  goldenInstructions: string;
+}
+
+interface WorkflowSuggestionData {
+  suggestedName: string;
+  icon: string;
+}
+
+// Helper to extract workflow JSON blocks from message content
+function extractWorkflowBlocks(content: string): {
+  cleanContent: string;
+  workflowApproval: WorkflowApprovalData | null;
+  workflowSuggestion: WorkflowSuggestionData | null;
+} {
+  let cleanContent = content;
+  let workflowApproval: WorkflowApprovalData | null = null;
+  let workflowSuggestion: WorkflowSuggestionData | null = null;
+
+  // Extract workflow_approval block
+  const approvalMatch = content.match(/```json:workflow_approval\n([\s\S]*?)\n```/);
+  if (approvalMatch) {
+    try {
+      workflowApproval = JSON.parse(approvalMatch[1]);
+      cleanContent = cleanContent.replace(approvalMatch[0], '').trim();
+    } catch (e) {
+      console.error('Failed to parse workflow_approval:', e);
+    }
+  }
+
+  // Extract workflow_suggestion block
+  const suggestionMatch = content.match(/```json:workflow_suggestion\n([\s\S]*?)\n```/);
+  if (suggestionMatch) {
+    try {
+      workflowSuggestion = JSON.parse(suggestionMatch[1]);
+      cleanContent = cleanContent.replace(suggestionMatch[0], '').trim();
+    } catch (e) {
+      console.error('Failed to parse workflow_suggestion:', e);
+    }
+  }
+
+  return { cleanContent, workflowApproval, workflowSuggestion };
+}
 
 // Configure marked for safe rendering
 marked.setOptions({
@@ -38,6 +89,8 @@ interface ChatAreaProps {
   onWorkflowCaptureSave?: (messageId: string) => void;
   // Auth
   onOpenAuth?: () => void;
+  // Personal context
+  onOpenContextFile?: () => void;
 }
 
 const ChatArea: React.FC<ChatAreaProps> = ({
@@ -55,7 +108,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({
   onWorkflowCaptureApprove,
   onWorkflowCaptureEdit,
   onWorkflowCaptureSave,
-  onOpenAuth
+  onOpenAuth,
+  onOpenContextFile
 }) => {
   const [inputText, setInputText] = useState('');
   const [showModels, setShowModels] = useState(false);
@@ -337,12 +391,46 @@ const ChatArea: React.FC<ChatAreaProps> = ({
       }
 
       if (msg.role === Role.ASSISTANT) {
-        const htmlContent = DOMPurify.sanitize(marked.parse(msg.content) as string);
+        // Extract workflow blocks from content
+        const { cleanContent, workflowApproval, workflowSuggestion } = extractWorkflowBlocks(msg.content);
+
+        const htmlContent = DOMPurify.sanitize(marked.parse(cleanContent) as string);
+
         return (
-          <div
-            className="markdown-content"
-            dangerouslySetInnerHTML={{ __html: htmlContent }}
-          />
+          <>
+            <div
+              className="markdown-content"
+              dangerouslySetInnerHTML={{ __html: htmlContent }}
+            />
+
+            {/* Render workflow approval card if present */}
+            {workflowApproval && (
+              <WorkflowApprovalCard
+                messageId={msg.id}
+                workflowData={{
+                  name: workflowApproval.name,
+                  description: workflowApproval.description,
+                  icon: workflowApproval.icon,
+                  goldenInstructions: workflowApproval.goldenInstructions,
+                  steps: workflowApproval.steps,
+                  tags: workflowApproval.tools
+                }}
+              />
+            )}
+
+            {/* Render workflow suggestion if present */}
+            {workflowSuggestion && (
+              <WorkflowSuggestion
+                suggestedName={workflowSuggestion.suggestedName}
+                icon={workflowSuggestion.icon}
+                onSave={() => {
+                  // Trigger workflow extraction
+                  const extractionRequest = `WORKFLOW_EXTRACTION_REQUEST: Save this conversation as a workflow called "${workflowSuggestion.suggestedName}". Extract the steps, tools used, and create golden instructions.`;
+                  onSend(extractionRequest);
+                }}
+              />
+            )}
+          </>
         );
       }
 
@@ -377,11 +465,22 @@ const ChatArea: React.FC<ChatAreaProps> = ({
         </div>
         
         <div className="flex items-center gap-3">
-          {/* Save Workflow Button - opens WorkflowWizard with conversation content */}
+          {/* Save Workflow Button - triggers AI workflow extraction */}
           <button
             onClick={() => {
-              // Call the save workflow handler which opens the wizard
-              onSaveWorkflow();
+              // Send a message to trigger AI workflow extraction
+              const extractionRequest = `WORKFLOW_EXTRACTION_REQUEST: Analyze the conversation above and extract a reusable workflow. You must:
+1. Generate a short, catchy name for this workflow (2-4 words)
+2. Choose an appropriate emoji icon
+3. Write a one-sentence description
+4. List the key steps (3-7 steps)
+5. List the tools/integrations used
+6. Create the golden instructions (the core prompt that makes this work)
+
+Then return the workflow data in the JSON format specified in your instructions.
+
+DO NOT ask the user to provide the name or description. YOU generate everything.`;
+              onSend(extractionRequest);
             }}
             disabled={messages.length < 2 || isTyping}
             className="flex items-center gap-2 bg-accent/10 border border-accent/20 px-4 py-1.5 rounded-full text-[11px] font-bold text-accent hover:bg-accent hover:text-canvas transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
@@ -437,6 +536,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
           {/* User Profile Menu */}
           <UserProfileMenu
             onOpenAuth={onOpenAuth}
+            onOpenContextFile={onOpenContextFile}
           />
         </div>
       </div>

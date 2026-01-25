@@ -6,6 +6,13 @@
  */
 
 import React, { useState } from 'react';
+import {
+  WelcomeHero,
+  ToolGrid,
+  ConnectionProgress,
+  PersonalContextForm,
+  OnboardingComplete,
+} from './onboarding';
 
 // ============================================================
 // BASE TYPES
@@ -963,6 +970,13 @@ export const componentCatalog: Record<string, React.FC<any>> = {
   EmailDraftsList,
   StepProgress,
   VariableForm,
+
+  // Onboarding
+  WelcomeHero,
+  ToolGrid,
+  ConnectionProgress,
+  PersonalContextForm,
+  OnboardingComplete,
 };
 
 export default componentCatalog;

@@ -9,12 +9,12 @@
    ============================================================ */
 
 :root {
-  /* Workflow colors */
-  --workflow-bg: var(--bg-secondary, #1a1a2e);
-  --workflow-border: var(--border-color, #2d2d44);
+  /* Workflow colors - matches app theme */
+  --workflow-bg: var(--bg-secondary, #1a1a1a);
+  --workflow-border: var(--border-color, #2a2a2a);
   --workflow-text: var(--text-primary, #ffffff);
-  --workflow-text-secondary: var(--text-secondary, #a0a0b0);
-  --workflow-accent: var(--accent-color, #6366f1);
+  --workflow-text-secondary: var(--text-secondary, #888888);
+  --workflow-accent: var(--accent-color, #e07a5f);
   --workflow-success: var(--success-color, #22c55e);
   --workflow-warning: var(--warning-color, #f59e0b);
   --workflow-danger: var(--danger-color, #ef4444);

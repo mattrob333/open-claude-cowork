@@ -109,8 +109,10 @@ const WorkflowRunner: React.FC<WorkflowRunnerProps> = ({
 
     try {
       // Create EventSource for SSE streaming
+      // Pass workflow object for localStorage-based workflows
       const params = new URLSearchParams({
         variables: JSON.stringify(variables),
+        workflow: JSON.stringify(workflow),
       });
 
       const eventSource = new EventSource(
