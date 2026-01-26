@@ -25,20 +25,31 @@ interface QuickActionsPanelProps {
 }
 
 export default function QuickActionsPanel({ onSelectAction }: QuickActionsPanelProps) {
-  const [activeCategory, setActiveCategory] = useState<string>('comms');
+  const [activeCategory, setActiveCategory] = useState<string>('');
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
   const [quickActions, setQuickActions] = useState<QuickAction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadQuickActions();
-  }, [activeCategory]);
+  }, [activeCategory, isMobile]);
 
   const loadQuickActions = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const actions = await getQuickActions(activeCategory);
+      // On mobile, load all actions (empty category). On desktop, filter by category.
+      const categoryToLoad = isMobile ? '' : activeCategory;
+      const actions = await getQuickActions(categoryToLoad);
       setQuickActions(actions);
     } catch (err) {
       console.error('Error loading quick actions:', err);
@@ -71,8 +82,8 @@ export default function QuickActionsPanel({ onSelectAction }: QuickActionsPanelP
         <p className="text-xs text-white/40 mt-0.5">One-click automations</p>
       </div>
 
-      {/* Category Tabs */}
-      <div className="flex gap-1 px-3 py-2 border-b border-white/5 overflow-x-auto scrollbar-hide">
+      {/* Category Tabs - Hidden on mobile for cleaner UI */}
+      <div className="hidden md:flex gap-1 px-3 py-2 border-b border-white/5 overflow-x-auto scrollbar-hide">
         {CATEGORIES.map((cat) => (
           <button
             key={cat.id}

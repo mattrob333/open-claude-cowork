@@ -103,6 +103,16 @@ const AgentStudio: React.FC<AgentStudioProps> = ({
     title?: string;
   } | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('quick');
+  const [executionCollapsed, setExecutionCollapsed] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile
+  React.useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Workflow state removed - Quick Actions replaces workflows
 
@@ -175,10 +185,20 @@ const AgentStudio: React.FC<AgentStudioProps> = ({
       {/* Separator */}
       <div className="h-[1px] bg-border w-full" />
 
-      {/* Bottom Section: Execution Log (30%) - Always visible */}
-      <div className="flex-[3] flex flex-col overflow-hidden bg-[#1a1a1a]">
-        <div className="px-5 py-3 flex items-center justify-between border-b border-white/5 shrink-0">
+      {/* Bottom Section: Execution Log - Collapsible on mobile */}
+      <div className={`flex flex-col overflow-hidden bg-[#1a1a1a] transition-all duration-300 ${
+        isMobile ? (executionCollapsed ? 'flex-none' : 'flex-[3]') : 'flex-[3]'
+      }`}>
+        <div 
+          className={`px-5 py-3 flex items-center justify-between border-b border-white/5 shrink-0 ${isMobile ? 'cursor-pointer' : ''}`}
+          onClick={() => isMobile && setExecutionCollapsed(!executionCollapsed)}
+        >
           <div className="flex items-center gap-2">
+            {isMobile && (
+              <span className={`text-secondaryText transition-transform duration-200 ${executionCollapsed ? '' : 'rotate-180'}`}>
+                <ICONS.ChevronDown />
+              </span>
+            )}
             <span className="text-[11px] font-bold uppercase text-secondaryText tracking-widest">Execution</span>
             {toolLogs.length > 0 && (
               <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-accent/20 text-accent">
@@ -187,7 +207,7 @@ const AgentStudio: React.FC<AgentStudioProps> = ({
             )}
           </div>
           <button
-            onClick={onClear}
+            onClick={(e) => { e.stopPropagation(); onClear(); }}
             className="p-1.5 text-secondaryText hover:text-primaryText transition-colors"
             title="Clear logs"
           >
@@ -195,7 +215,7 @@ const AgentStudio: React.FC<AgentStudioProps> = ({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-3">
+        <div className={`flex-1 overflow-y-auto p-3 ${isMobile && executionCollapsed ? 'hidden' : ''}`}>
           {toolLogs.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full opacity-20 gap-2">
               <ICONS.Activity />

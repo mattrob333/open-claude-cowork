@@ -215,14 +215,20 @@ const SkillsPanel: React.FC<SkillsPanelProps> = ({
                                 e.stopPropagation();
                                 onToggleSkill(skill.id);
                               }}
-                              className={`shrink-0 w-10 h-5 rounded-full transition-colors relative ${
-                                isActive ? 'bg-accent' : 'bg-white/10'
+                              className={`shrink-0 transition-colors relative ${
+                                isActive ? 'bg-accent' : 'bg-white/20'
                               }`}
+                              style={{ width: '44px', height: '24px', borderRadius: '12px', minWidth: '44px' }}
                             >
                               <span
-                                className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all duration-200 ${
-                                  isActive ? 'left-[22px]' : 'left-0.5'
-                                }`}
+                                className="absolute bg-white shadow-sm transition-all duration-200"
+                                style={{
+                                  width: '18px',
+                                  height: '18px',
+                                  borderRadius: '9px',
+                                  top: '3px',
+                                  left: isActive ? '23px' : '3px'
+                                }}
                               />
                             </button>
                           </div>
