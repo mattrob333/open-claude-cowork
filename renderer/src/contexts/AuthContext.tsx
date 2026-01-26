@@ -5,7 +5,7 @@
  * Uses Supabase Auth for user management.
  */
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import {
   signIn,

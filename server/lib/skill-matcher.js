@@ -157,17 +157,27 @@ This will render as a button the user can click to trigger the full workflow ext
  * @param {Skill[]} activeSkills - Active skills to inject (full content)
  * @param {string | null} documentContext - Document context from knowledge base
  * @param {Skill[]} [availableSkills] - All available skills (for manifest)
+ * @param {string | null} [personalContext] - User's personal context
  * @returns {string}
  */
-export function buildSystemPromptWithSkills(basePrompt, activeSkills, documentContext, availableSkills = null) {
+export function buildSystemPromptWithSkills(basePrompt, activeSkills, documentContext, availableSkills = null, personalContext = null) {
   const parts = [];
 
-  // 1. Add base system prompt if provided
+  // 1. Add personal context first (most important for personalization)
+  if (personalContext && personalContext.trim()) {
+    parts.push(`<personal-context>
+The following is important context about the user. Use this to personalize your responses and understand their preferences, background, and communication style:
+
+${personalContext}
+</personal-context>`);
+  }
+
+  // 2. Add base system prompt if provided
   if (basePrompt && basePrompt.trim()) {
     parts.push(basePrompt);
   }
 
-  // 2. Add workflow system instructions
+  // 3. Add workflow system instructions
   parts.push(WORKFLOW_SYSTEM_INSTRUCTIONS);
 
   // 3. Add skills manifest (all available skills)

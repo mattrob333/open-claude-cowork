@@ -1,46 +1,43 @@
-# Fly.io Configuration for Open Claude Cowork
-# Deploy with: fly launch --config fly.toml
+# fly.toml app configuration file generated for open-claude-cowork on 2026-01-25T11:09:50-05:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
 
-app = "open-claude-cowork"
-primary_region = "iad"
+app = 'open-claude-cowork'
+primary_region = 'iad'
 
 [build]
-  dockerfile = "Dockerfile"
+  dockerfile = 'Dockerfile'
 
 [env]
-  NODE_ENV = "production"
-  PORT = "3001"
-  LOG_LEVEL = "info"
+  LOG_LEVEL = 'info'
+  NODE_ENV = 'production'
+  PORT = '3001'
 
 [http_service]
   internal_port = 3001
   force_https = true
-  auto_stop_machines = true
+  auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
-  processes = ["app"]
+  processes = ['app']
 
   [http_service.concurrency]
-    type = "connections"
+    type = 'connections'
     hard_limit = 100
     soft_limit = 80
 
-[[vm]]
-  cpu_kind = "shared"
-  cpus = 1
-  memory_mb = 512
-
 [checks]
   [checks.health]
-    grace_period = "30s"
-    interval = "30s"
-    method = "GET"
-    path = "/api/health"
     port = 3001
-    timeout = "10s"
-    type = "http"
+    type = 'http'
+    interval = '30s'
+    timeout = '10s'
+    grace_period = '30s'
+    method = 'GET'
+    path = '/api/health'
 
-# Secrets to set via CLI:
-# fly secrets set ANTHROPIC_API_KEY=sk-ant-...
-# fly secrets set COMPOSIO_API_KEY=...
-# fly secrets set CORS_ORIGINS=https://your-domain.fly.dev
+[[vm]]
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 512

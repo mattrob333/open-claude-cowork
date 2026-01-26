@@ -13,41 +13,48 @@ interface PersonalContextModalProps {
   onClose: () => void;
 }
 
-interface PersonalContext {
-  role: string;
-  tasks: string[];
-  preferences: string;
-  rawMarkdown?: string;
-}
-
-const TASK_OPTIONS = [
-  { value: 'email', label: 'Write emails', icon: '📧' },
-  { value: 'research', label: 'Research', icon: '🔍' },
-  { value: 'planning', label: 'Planning', icon: '📋' },
-  { value: 'coding', label: 'Code', icon: '💻' },
-  { value: 'sales', label: 'Sales calls', icon: '📞' },
-  { value: 'content', label: 'Create content', icon: '✍️' },
-  { value: 'analysis', label: 'Data analysis', icon: '📊' },
-  { value: 'meetings', label: 'Meeting prep', icon: '🎯' },
-  { value: 'docs', label: 'Documentation', icon: '📝' },
-  { value: 'social', label: 'Social media', icon: '📱' },
-];
-
 const LOCAL_STORAGE_KEY = 'personal_context';
+
+// AI context template prompt - general purpose for work and life
+const AI_CONTEXT_TEMPLATE = `Create a comprehensive personal context profile for me that I can use with an AI assistant. This should cover all aspects of my life where I might need AI help. Include the following sections:
+
+## About Me
+- My name and background
+- Key interests, skills, and expertise
+- Current life situation and priorities
+
+## Communication Preferences
+- How I like to receive information (concise vs detailed)
+- Tone preferences (formal, casual, direct)
+- Any specific formatting I prefer
+
+## Areas I Need Help With
+- Professional tasks and goals
+- Personal projects and interests
+- Regular activities or routines
+
+## Important Context
+- Key people in my life (family, colleagues, etc.)
+- Goals I'm working toward
+- Constraints or considerations to keep in mind
+
+## My Style
+- Writing tone and voice
+- Decision-making approach
+- Values and principles that matter to me
+
+Please ask me questions to gather this information, then format it as a clean markdown document I can paste into my AI assistant.`;
 
 const PersonalContextModal: React.FC<PersonalContextModalProps> = ({
   isOpen,
   onClose,
 }) => {
-  const [context, setContext] = useState<PersonalContext>({
-    role: '',
-    tasks: [],
-    preferences: '',
-  });
+  const [contextText, setContextText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [showPromptCopied, setShowPromptCopied] = useState(false);
 
   // Load context on open
   useEffect(() => {
@@ -64,7 +71,7 @@ const PersonalContextModal: React.FC<PersonalContextModalProps> = ({
       // First try to load from localStorage
       const localData = localStorage.getItem(LOCAL_STORAGE_KEY);
       if (localData) {
-        setContext(JSON.parse(localData));
+        setContextText(localData);
       }
 
       // Then try to fetch from backend (source of truth)
@@ -78,18 +85,17 @@ const PersonalContextModal: React.FC<PersonalContextModalProps> = ({
         const data = await response.json();
         if (data.success && data.data?.personalContext) {
           const serverContext = data.data.personalContext;
-          setContext(serverContext);
-          // Update local cache
-          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(serverContext));
+          // Handle both old format (object) and new format (string)
+          const text = typeof serverContext === 'string' 
+            ? serverContext 
+            : serverContext.rawMarkdown || serverContext.preferences || '';
+          setContextText(text);
+          localStorage.setItem(LOCAL_STORAGE_KEY, text);
         }
       }
     } catch (err) {
       console.error('Error loading personal context:', err);
-      // Don't show error if we have local data
-      const localData = localStorage.getItem(LOCAL_STORAGE_KEY);
-      if (!localData) {
-        setError('Failed to load personal context');
-      }
+      // Silently fail - localStorage will be used as fallback
     } finally {
       setIsLoading(false);
     }
@@ -102,7 +108,7 @@ const PersonalContextModal: React.FC<PersonalContextModalProps> = ({
 
     try {
       // Save to localStorage first (immediate)
-      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(context));
+      localStorage.setItem(LOCAL_STORAGE_KEY, contextText);
 
       // Then sync to backend
       const response = await fetch('/api/user/personal-context', {
@@ -111,7 +117,7 @@ const PersonalContextModal: React.FC<PersonalContextModalProps> = ({
           'Content-Type': 'application/json',
           'x-user-id': 'default-user', // TODO: Get from auth context
         },
-        body: JSON.stringify(context),
+        body: JSON.stringify({ rawMarkdown: contextText }),
       });
 
       if (!response.ok) {
@@ -126,15 +132,6 @@ const PersonalContextModal: React.FC<PersonalContextModalProps> = ({
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const handleTaskToggle = (taskValue: string) => {
-    setContext(prev => ({
-      ...prev,
-      tasks: prev.tasks.includes(taskValue)
-        ? prev.tasks.filter(t => t !== taskValue)
-        : [...prev.tasks, taskValue],
-    }));
   };
 
   if (!isOpen) return null;
@@ -155,15 +152,32 @@ const PersonalContextModal: React.FC<PersonalContextModalProps> = ({
             <span className="text-2xl">🧠</span>
             <div>
               <h2 className="text-lg font-bold text-primaryText">Personal Context</h2>
-              <p className="text-sm text-secondaryText">Help me understand how to help you</p>
+              <p className="text-sm text-secondaryText">Tell me about yourself so I can help you better</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-secondaryText hover:text-primaryText hover:bg-hover rounded-lg transition-all"
-          >
-            <ICONS.X />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(AI_CONTEXT_TEMPLATE);
+                setShowPromptCopied(true);
+                setTimeout(() => setShowPromptCopied(false), 2000);
+              }}
+              className="flex items-center gap-2 px-3 py-1.5 text-xs bg-accent/10 text-accent border border-accent/20 rounded-lg hover:bg-accent/20 transition-all"
+              title="Copy a template prompt to use with any AI to generate your personal context"
+            >
+              {showPromptCopied ? (
+                <>✓ Copied!</>
+              ) : (
+                <>📋 Copy AI Context Template</>
+              )}
+            </button>
+            <button
+              onClick={onClose}
+              className="p-2 text-secondaryText hover:text-primaryText hover:bg-hover rounded-lg transition-all"
+            >
+              <ICONS.X />
+            </button>
+          </div>
         </div>
 
         {/* Content */}
@@ -175,91 +189,29 @@ const PersonalContextModal: React.FC<PersonalContextModalProps> = ({
             </div>
           ) : (
             <>
-              {/* Role input */}
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold text-primaryText">
-                  What's your role?
-                </label>
-                <input
-                  type="text"
-                  className="w-full px-4 py-3 bg-canvas border border-border rounded-xl text-primaryText placeholder-secondaryText focus:outline-none focus:border-accent transition-colors"
-                  placeholder="e.g., Product Manager at a startup"
-                  value={context.role}
-                  onChange={(e) => setContext(prev => ({ ...prev, role: e.target.value }))}
-                />
+              {/* Instructions */}
+              <div className="bg-accent/5 border border-accent/20 rounded-xl p-4">
+                <p className="text-sm text-secondaryText">
+                  <span className="text-accent font-medium">Tip:</span> Click "Copy AI Context Template" above, paste it into ChatGPT or Claude, answer the questions, then paste the result here.
+                </p>
               </div>
 
-              {/* Tasks selection */}
+              {/* Main text area */}
               <div className="space-y-2">
                 <label className="block text-sm font-semibold text-primaryText">
-                  What do you do most often?
-                  <span className="ml-2 text-xs font-normal text-secondaryText">(pick a few)</span>
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {TASK_OPTIONS.map((option) => {
-                    const isSelected = context.tasks.includes(option.value);
-                    return (
-                      <button
-                        key={option.value}
-                        type="button"
-                        className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm transition-all ${
-                          isSelected
-                            ? 'bg-accent/15 border border-accent text-accent'
-                            : 'bg-canvas border border-border text-secondaryText hover:border-accent/50 hover:text-primaryText'
-                        }`}
-                        onClick={() => handleTaskToggle(option.value)}
-                      >
-                        <span>{option.icon}</span>
-                        <span>{option.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Preferences textarea */}
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold text-primaryText">
-                  Anything else I should know?
-                  <span className="ml-2 text-xs font-normal text-secondaryText">(optional)</span>
+                  Your Personal Context
                 </label>
                 <textarea
-                  className="w-full px-4 py-3 bg-canvas border border-border rounded-xl text-primaryText placeholder-secondaryText focus:outline-none focus:border-accent transition-colors resize-none"
-                  placeholder="e.g., I prefer concise responses. I work on B2B SaaS products. My team uses agile methodology..."
-                  rows={4}
-                  value={context.preferences}
-                  onChange={(e) => setContext(prev => ({ ...prev, preferences: e.target.value }))}
+                  className="w-full px-4 py-3 bg-canvas border border-border rounded-xl text-primaryText placeholder-secondaryText focus:outline-none focus:border-accent transition-colors resize-none font-mono text-sm"
+                  placeholder="Paste your personal context here...\n\nThis can include anything about you:\n- Who you are and what you do\n- Your communication preferences\n- Goals and priorities\n- Writing style\n- Important context about your life\n\nThe AI will use this to personalize responses."
+                  rows={14}
+                  value={contextText}
+                  onChange={(e) => setContextText(e.target.value)}
                 />
+                <p className="text-xs text-secondaryText">
+                  {contextText.length > 0 ? `${contextText.length} characters` : 'No context added yet'}
+                </p>
               </div>
-
-              {/* Preview */}
-              {(context.role || context.tasks.length > 0 || context.preferences) && (
-                <div className="bg-canvas border border-border rounded-xl overflow-hidden">
-                  <div className="flex items-center gap-2 px-4 py-2 bg-hover/50 border-b border-border">
-                    <span>📄</span>
-                    <span className="text-xs font-semibold text-secondaryText uppercase tracking-wide">
-                      Context Preview
-                    </span>
-                  </div>
-                  <div className="p-4 text-sm text-secondaryText space-y-2">
-                    {context.role && (
-                      <p><span className="text-primaryText font-medium">Role:</span> {context.role}</p>
-                    )}
-                    {context.tasks.length > 0 && (
-                      <p>
-                        <span className="text-primaryText font-medium">Common tasks:</span>{' '}
-                        {context.tasks.map(t => {
-                          const opt = TASK_OPTIONS.find(o => o.value === t);
-                          return opt?.label || t;
-                        }).join(', ')}
-                      </p>
-                    )}
-                    {context.preferences && (
-                      <p><span className="text-primaryText font-medium">Preferences:</span> {context.preferences}</p>
-                    )}
-                  </div>
-                </div>
-              )}
 
               {/* Messages */}
               {error && (

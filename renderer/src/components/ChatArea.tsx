@@ -366,9 +366,12 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                     <ICONS.Download />
                     Download
                   </button>
-                  <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent/20 hover:bg-accent/30 text-[11px] font-semibold text-accent hover:text-accent transition-all ml-auto">
-                    <ICONS.Tool />
-                    Send to Studio
+                  <button 
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent/20 hover:bg-accent/30 text-[11px] font-semibold text-accent hover:text-accent transition-all ml-auto"
+                    onClick={() => onSend('__QUICK_ACTION_EXTRACT__')}
+                  >
+                    <ICONS.Wand />
+                    Save as Quick Action
                   </button>
                 </>
               )}
@@ -424,9 +427,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                 suggestedName={workflowSuggestion.suggestedName}
                 icon={workflowSuggestion.icon}
                 onSave={() => {
-                  // Trigger workflow extraction
-                  const extractionRequest = `WORKFLOW_EXTRACTION_REQUEST: Save this conversation as a workflow called "${workflowSuggestion.suggestedName}". Extract the steps, tools used, and create golden instructions.`;
-                  onSend(extractionRequest);
+                  // Trigger quick action extraction
+                  onSend('__QUICK_ACTION_EXTRACT__');
                 }}
               />
             )}
@@ -465,29 +467,18 @@ const ChatArea: React.FC<ChatAreaProps> = ({
         </div>
         
         <div className="flex items-center gap-3">
-          {/* Save Workflow Button - triggers AI workflow extraction */}
+          {/* Save Quick Action Button - triggers AI workflow extraction */}
           <button
             onClick={() => {
-              // Send a message to trigger AI workflow extraction
-              const extractionRequest = `WORKFLOW_EXTRACTION_REQUEST: Analyze the conversation above and extract a reusable workflow. You must:
-1. Generate a short, catchy name for this workflow (2-4 words)
-2. Choose an appropriate emoji icon
-3. Write a one-sentence description
-4. List the key steps (3-7 steps)
-5. List the tools/integrations used
-6. Create the golden instructions (the core prompt that makes this work)
-
-Then return the workflow data in the JSON format specified in your instructions.
-
-DO NOT ask the user to provide the name or description. YOU generate everything.`;
-              onSend(extractionRequest);
+              // Send a hidden system message to trigger AI workflow extraction
+              onSend('__QUICK_ACTION_EXTRACT__');
             }}
             disabled={messages.length < 2 || isTyping}
             className="flex items-center gap-2 bg-accent/10 border border-accent/20 px-4 py-1.5 rounded-full text-[11px] font-bold text-accent hover:bg-accent hover:text-canvas transition-all group disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Convert current chat logic into a Saved Workflow"
+            title="Save this conversation as a reusable Quick Action"
           >
             <ICONS.Wand />
-            <span className="hidden sm:inline">Save as Workflow</span>
+            <span className="hidden sm:inline">Save as Quick Action</span>
           </button>
 
           <div className="relative" ref={modelDropdownRef}>
@@ -548,7 +539,7 @@ DO NOT ask the user to provide the name or description. YOU generate everything.
             <div className="w-16 h-16 bg-accent/10 rounded-3xl flex items-center justify-center text-accent mb-6">
               <ICONS.Activity />
             </div>
-            <h1 className="text-3xl font-bold mb-3 tracking-tight">Hyper Gemini Agent</h1>
+            <h1 className="text-3xl font-bold mb-3 tracking-tight">Get Shit Done.</h1>
             <p className="text-secondaryText max-w-sm text-sm leading-relaxed opacity-60">
               High-performance research workspace. Upload docs to knowledge base or trigger workflows from the studio.
             </p>

@@ -13,7 +13,6 @@ import WorkflowInfoModal from './WorkflowInfoModal';
 import { ICONS } from '../../constants';
 import {
   getWorkflows,
-  saveWorkflow,
   deleteWorkflow,
   toggleFavorite
 } from '../../lib/workflowStorage';
@@ -160,34 +159,6 @@ const WorkflowPanel: React.FC<WorkflowPanelProps> = ({
     setInfoWorkflow(workflow);
   }, []);
 
-  /**
-   * Create test workflow (for development testing)
-   */
-  const handleCreateTestWorkflow = useCallback(() => {
-    const testWorkflow: Workflow = {
-      id: `wf_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      name: 'Research & Summarize',
-      description: 'Researches a topic and creates a comprehensive summary',
-      icon: '🔬',
-      status: 'active',
-      goldenInstructions: 'Search the web for information on the given topic, analyze the results, and produce a well-structured summary.',
-      steps: [
-        { id: 'step_1', name: 'Search for information', description: 'Query web search for topic', tools: ['web_search'] },
-        { id: 'step_2', name: 'Analyze results', description: 'Review and extract key points', tools: ['read', 'analyze'] },
-        { id: 'step_3', name: 'Generate summary', description: 'Create structured summary', tools: ['write'] }
-      ],
-      variables: [
-        { id: 'var_1', key: 'topic', name: 'Research Topic', type: 'string', required: true, description: 'The topic to research' },
-        { id: 'var_2', key: 'depth', name: 'Research Depth', type: 'select', required: false, options: ['brief', 'moderate', 'comprehensive'] }
-      ],
-      tags: ['research', 'automation'],
-      runCount: 0,
-      isFavorite: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    saveWorkflow(testWorkflow);
-  }, []);
 
   /**
    * Filter workflows client-side
@@ -240,15 +211,8 @@ const WorkflowPanel: React.FC<WorkflowPanelProps> = ({
     <div className={`workflow-panel ${className}`}>
       {/* Header */}
       <div className="workflow-panel__header">
-        <span className="workflow-panel__title">Workflows</span>
+        <span className="workflow-panel__title">Quick Actions</span>
         <span className="workflow-panel__count">{workflows.length}</span>
-        <button
-          onClick={handleCreateTestWorkflow}
-          className="ml-auto p-1.5 text-secondaryText hover:text-accent hover:bg-accent/10 rounded-lg transition-all"
-          title="Create test workflow"
-        >
-          <ICONS.Plus />
-        </button>
       </div>
 
       {/* Search & Filter Bar */}
@@ -341,10 +305,10 @@ const WorkflowPanel: React.FC<WorkflowPanelProps> = ({
             ) : (
               <>
                 <span className="workflow-panel__empty-icon">📋</span>
-                <span>No workflows yet</span>
+                <span>No quick actions yet</span>
                 <p>
-                  Chat with the assistant and click "Save as Workflow" to create
-                  reusable workflows.
+                  Chat with the AI and save successful
+                  workflows as quick actions.
                 </p>
               </>
             )}

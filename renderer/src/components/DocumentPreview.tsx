@@ -274,7 +274,8 @@ export const DocumentCard: React.FC<{
   isActive?: boolean;
   onClick?: () => void;
   onToggle?: () => void;
-}> = ({ name, type, size, status = 'ready', isActive = false, onClick, onToggle }) => {
+  onDelete?: () => void;
+}> = ({ name, type, size, status = 'ready', isActive = false, onClick, onToggle, onDelete }) => {
   const formatSize = (bytes?: number) => {
     if (!bytes) return '';
     if (bytes < 1024) return `${bytes} B`;
@@ -337,6 +338,17 @@ export const DocumentCard: React.FC<{
           View
         </div>
       </div>
+
+      {/* Delete button - always visible */}
+      {onDelete && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          className="p-1.5 text-secondaryText hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all shrink-0"
+          title="Delete"
+        >
+          <ICONS.Trash />
+        </button>
+      )}
     </div>
   );
 };

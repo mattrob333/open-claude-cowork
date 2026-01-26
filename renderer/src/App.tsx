@@ -12,10 +12,11 @@ import ResizeHandle from './components/ResizeHandle';
 import { BottomNavigation, MobileHeader, type MobileView } from './components/mobile';
 import { Session, Message, Role, ToolLogEntry, KnowledgeAsset, ModelOption, WorkflowTemplate, EphemeralDocument } from './types';
 import { MODELS } from './constants';
-import { streamChat, uploadDocument, getDocuments, getDocumentUrl, ChatOptions } from './services/chatService';
+import { streamChat, uploadDocument, getDocuments, getDocumentUrl, ChatOptions, generateSessionTitle } from './services/chatService';
 import AuthModal from './components/AuthModal';
 import PersonalContextModal from './components/PersonalContextModal';
 import OnboardingModal from './components/OnboardingModal';
+import { useAuth } from './contexts/AuthContext';
 
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).substr(2);
@@ -92,6 +93,9 @@ function detectArtifact(content: string): DetectedArtifact | null {
 }
 
 function App() {
+  // Auth state
+  const { user } = useAuth();
+
   // Sessions state
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -104,9 +108,9 @@ function App() {
   const [currentModel, setCurrentModel] = useState<ModelOption>(MODELS[0]);
   const [toolLogs, setToolLogs] = useState<ToolLogEntry[]>([]);
 
-  // Sidebar widths (resizable)
-  const [leftSidebarWidth, setLeftSidebarWidth] = useState(288); // Default: w-72 = 288px
-  const [rightSidebarWidth, setRightSidebarWidth] = useState(320); // Default: w-80 = 320px
+  // Sidebar widths (resizable) - defaulting to max width
+  const [leftSidebarWidth, setLeftSidebarWidth] = useState(500); // Default: max width
+  const [rightSidebarWidth, setRightSidebarWidth] = useState(600); // Default: max width
 
   // Sidebar constraints
   const LEFT_SIDEBAR_MIN = 220;
@@ -173,6 +177,58 @@ function App() {
   // Get current session and messages
   const currentSession = sessions.find(s => s.id === activeSessionId);
   const currentMessages = activeSessionId ? (messagesBySession[activeSessionId] || []) : [];
+
+  // Load sessions and messages from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedSessions = localStorage.getItem('chat_sessions');
+      const savedMessages = localStorage.getItem('chat_messages');
+      const savedActiveSessionId = localStorage.getItem('active_session_id');
+      
+      if (savedSessions) {
+        setSessions(JSON.parse(savedSessions));
+      }
+      if (savedMessages) {
+        setMessagesBySession(JSON.parse(savedMessages));
+      }
+      if (savedActiveSessionId) {
+        setActiveSessionId(savedActiveSessionId);
+      }
+    } catch (err) {
+      console.error('Error loading sessions from localStorage:', err);
+    }
+  }, []);
+
+  // Save sessions to localStorage when they change
+  useEffect(() => {
+    try {
+      localStorage.setItem('chat_sessions', JSON.stringify(sessions));
+    } catch (err) {
+      console.error('Error saving sessions to localStorage:', err);
+    }
+  }, [sessions]);
+
+  // Save messages to localStorage when they change
+  useEffect(() => {
+    try {
+      localStorage.setItem('chat_messages', JSON.stringify(messagesBySession));
+    } catch (err) {
+      console.error('Error saving messages to localStorage:', err);
+    }
+  }, [messagesBySession]);
+
+  // Save active session ID to localStorage when it changes
+  useEffect(() => {
+    try {
+      if (activeSessionId) {
+        localStorage.setItem('active_session_id', activeSessionId);
+      } else {
+        localStorage.removeItem('active_session_id');
+      }
+    } catch (err) {
+      console.error('Error saving active session ID to localStorage:', err);
+    }
+  }, [activeSessionId]);
 
   // Show onboarding on first run and clean up old Start Here workflow
   useEffect(() => {
@@ -282,6 +338,17 @@ function App() {
     );
   }, []);
 
+  // Delete knowledge asset
+  const handleDeleteAsset = useCallback(async (id: string) => {
+    try {
+      const { deleteDocument } = await import('./services/chatService');
+      await deleteDocument(id);
+      setKnowledgeAssets(prev => prev.filter(a => a.id !== id));
+    } catch (error) {
+      console.error('Error deleting document:', error);
+    }
+  }, []);
+
   // Ephemeral document handlers
   const handleAddEphemeralDoc = useCallback((doc: EphemeralDocument) => {
     setEphemeralDocs(prev => [...prev, doc]);
@@ -325,7 +392,8 @@ function App() {
 
     try {
       // Upload to backend (which handles Supabase storage + database)
-      const doc = await uploadDocument(file);
+      // Pass user ID if authenticated, otherwise use default
+      const doc = await uploadDocument(file, user?.id);
 
       const newAsset: KnowledgeAsset = {
         id: doc.id,
@@ -368,11 +436,14 @@ function App() {
       }
     }
 
-    // Add user message
+    // Check if this is a hidden system trigger (don't show in chat)
+    const isHiddenTrigger = text === '__QUICK_ACTION_EXTRACT__';
+
+    // Add user message (skip if hidden trigger)
     const userMessage: Message = {
       id: generateId(),
       role: Role.USER,
-      content: text,
+      content: isHiddenTrigger ? '' : text,
       timestamp: Date.now()
     };
 
@@ -384,9 +455,12 @@ function App() {
       timestamp: Date.now()
     };
 
+    // Only add user message if not a hidden trigger
     setMessagesBySession(prev => ({
       ...prev,
-      [sessionId!]: [...(prev[sessionId!] || []), userMessage, assistantMessage]
+      [sessionId!]: isHiddenTrigger 
+        ? [...(prev[sessionId!] || []), assistantMessage]
+        : [...(prev[sessionId!] || []), userMessage, assistantMessage]
     }));
 
     setIsTyping(true);
@@ -417,6 +491,11 @@ function App() {
       }
       if (activeSkillIds.length > 0) {
         chatOptions.activeSkillIds = activeSkillIds;
+      }
+      // Load personal context from localStorage
+      const personalContext = localStorage.getItem('personal_context');
+      if (personalContext) {
+        chatOptions.personalContext = personalContext;
       }
 
       for await (const chunk of streamChat(text, sessionId!, provider, currentModel.id, chatOptions)) {
@@ -581,6 +660,22 @@ function App() {
 
         return prev;
       });
+
+      // Generate AI title for new sessions (only on first message)
+      const currentMsgs = messagesBySession[sessionId!] || [];
+      if (currentMsgs.length <= 2 && !isHiddenTrigger) {
+        // This is the first exchange - generate a proper title
+        const userMsg = currentMsgs.find(m => m.role === Role.USER)?.content || text;
+        const assistantMsg = currentMsgs.find(m => m.role === Role.ASSISTANT)?.content || '';
+        
+        if (userMsg && assistantMsg) {
+          generateSessionTitle(userMsg, assistantMsg).then(title => {
+            setSessions(prev => prev.map(s =>
+              s.id === sessionId ? { ...s, title } : s
+            ));
+          });
+        }
+      }
     }
   }, [activeSessionId, isTyping, currentModel, messagesBySession, knowledgeAssets, ephemeralDocs, activeSkillIds]);
 
@@ -761,6 +856,7 @@ function App() {
             onDeleteSession={handleDeleteSession}
             assets={knowledgeAssets}
             onToggleAsset={handleToggleAsset}
+            onDeleteAsset={handleDeleteAsset}
             onUploadFile={handleUploadFile}
             onViewDocument={handleViewDocument}
             onOpenKnowledgeBase={() => {

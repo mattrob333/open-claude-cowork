@@ -1,10 +1,12 @@
-# Open Claude Cowork
+# Get Shit Done Bot
 
-A modern desktop application for AI-powered workflow automation with multi-provider support and real-time tool execution visualization.
+> "GET SHIT **DONE.**" - The AI Agent That Takes Action.
+
+A modern web application for AI-powered task automation with multi-provider support and real-time tool execution visualization.
 
 ## Overview
 
-Open Claude Cowork is an Electron-based chat application that provides a unified interface for interacting with AI agents. It features:
+Get Shit Done Bot is a React-based chat application that provides a unified interface for interacting with AI agents. It features:
 
 - **Multi-Provider Support**: Switch between Claude Agent SDK and Opencode SDK
 - **Tool Integration**: 500+ app integrations via Composio MCP (Gmail, Slack, GitHub, etc.)

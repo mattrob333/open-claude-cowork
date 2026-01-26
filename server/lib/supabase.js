@@ -55,16 +55,17 @@ export function isSupabaseConfigured() {
  * @param {string} documentId - Document ID
  * @param {string} fileName - Original file name
  * @param {string} mimeType - File MIME type
+ * @param {string} userId - User ID for folder organization
  * @returns {Promise<{path: string, error: string | null}>}
  */
-export async function uploadFile(buffer, documentId, fileName, mimeType) {
+export async function uploadFile(buffer, documentId, fileName, mimeType, userId = 'default') {
   const supabase = getSupabaseClient();
   if (!supabase) {
     return { path: null, error: 'Supabase not configured' };
   }
 
-  // Store files at: documents/{documentId}/{fileName}
-  const filePath = `${documentId}/${fileName}`;
+  // Store files at: documents/{userId}/{documentId}/{fileName}
+  const filePath = `${userId}/${documentId}/${fileName}`;
 
   const { data, error } = await supabase.storage
     .from('documents')
@@ -260,18 +261,18 @@ export async function listDocuments(options = {}) {
 /**
  * Delete a document and its file
  * @param {string} documentId - Document ID
- * @param {string} fileName - File name for storage deletion
+ * @param {string} storagePath - Full storage path for file deletion
  * @returns {Promise<{success: boolean, error: string | null}>}
  */
-export async function deleteDocument(documentId, fileName) {
+export async function deleteDocument(documentId, storagePath) {
   const supabase = getSupabaseClient();
   if (!supabase) {
     return { success: false, error: 'Supabase not configured' };
   }
 
   // Delete file from storage
-  if (fileName) {
-    await deleteFile(`${documentId}/${fileName}`);
+  if (storagePath) {
+    await deleteFile(storagePath);
   }
 
   // Delete document record
@@ -303,10 +304,8 @@ export async function storeChunks(documentId, userId, chunks) {
 
   const chunkRecords = chunks.map((chunk, index) => ({
     document_id: documentId,
-    user_id: userId,
     content: chunk.content || chunk.text,
     chunk_index: index,
-    page_number: chunk.page || null,
     metadata: chunk.metadata || {}
   }));
 
@@ -345,7 +344,7 @@ export async function fetchChunksForDocuments(documentIds, options = {}) {
     // Fetch chunks for all documents, ordered by document and chunk index
     const { data, error } = await supabase
       .from('document_chunks')
-      .select('id, document_id, content, chunk_index, page_number, metadata')
+      .select('id, document_id, content, chunk_index, metadata')
       .in('document_id', documentIds)
       .order('document_id', { ascending: true })
       .order('chunk_index', { ascending: true })

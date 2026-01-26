@@ -1,12 +1,13 @@
 
 import React, { useState } from 'react';
 import { ToolLogEntry } from '../types';
-import { Workflow } from '../types/workflow';
+// Workflow type removed - Quick Actions replaces workflows
 import { ICONS } from '../constants';
 import BrowserPreview, { BrowserPreviewCompact } from './BrowserPreview';
 import { ToolTimelineIcon } from './ToolTimelineIcon';
 import SkillsPanel from './SkillsPanel';
-import { WorkflowPanel, WorkflowRunner } from './Workflow';
+import QuickActionsPanel from './QuickActionsPanel';
+import { QuickAction } from '../services/quickActionsService';
 
 /**
  * Humanizes raw tool names for display
@@ -58,7 +59,7 @@ interface AgentStudioProps {
   onActivateSkill?: (skillId: string) => void;
 }
 
-type TabType = 'workflows' | 'skills';
+type TabType = 'quick' | 'skills';
 
 // Legacy hardcoded workflows removed - now using WorkflowPanel with localStorage
 
@@ -101,17 +102,21 @@ const AgentStudio: React.FC<AgentStudioProps> = ({
     url?: string;
     title?: string;
   } | null>(null);
-  const [activeTab, setActiveTab] = useState<TabType>('workflows');
+  const [activeTab, setActiveTab] = useState<TabType>('quick');
 
-  // New workflow system state
-  const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null);
-  const [runningWorkflow, setRunningWorkflow] = useState<Workflow | null>(null);
+  // Workflow state removed - Quick Actions replaces workflows
 
   // Tab configuration (Execution is now in bottom panel, not a tab)
   const tabs: { id: TabType; label: string; badge?: number }[] = [
-    { id: 'workflows', label: 'Workflows' },
+    { id: 'quick', label: 'Quick Actions' },
     { id: 'skills', label: 'Skills', badge: activeSkillIds.length > 0 ? activeSkillIds.length : undefined },
   ];
+
+  // Handle quick action selection
+  const handleSelectQuickAction = (action: QuickAction) => {
+    console.log('Selected quick action:', action);
+    // TODO: Pre-fill chat with the system prompt
+  };
 
   return (
     <aside className="h-full bg-panel border-l border-border flex flex-col overflow-hidden animate-in slide-in-from-right duration-300">
@@ -153,13 +158,8 @@ const AgentStudio: React.FC<AgentStudioProps> = ({
         </div>
 
         {/* Tab Content */}
-        {activeTab === 'workflows' && (
-          <WorkflowPanel
-            onRunWorkflow={(workflow) => setRunningWorkflow(workflow)}
-            onSelectWorkflow={setSelectedWorkflow}
-            selectedWorkflowId={selectedWorkflow?.id}
-            className="flex-1"
-          />
+        {activeTab === 'quick' && (
+          <QuickActionsPanel onSelectAction={handleSelectQuickAction} />
         )}
 
         {activeTab === 'skills' && onToggleSkill && onActivateSkill && (
@@ -302,17 +302,7 @@ const AgentStudio: React.FC<AgentStudioProps> = ({
         </div>
       </div>
 
-      {/* Workflow Runner Modal */}
-      {runningWorkflow && (
-        <WorkflowRunner
-          workflow={runningWorkflow}
-          onClose={() => setRunningWorkflow(null)}
-          onComplete={(run) => {
-            console.log('Workflow completed:', run);
-            setRunningWorkflow(null);
-          }}
-        />
-      )}
+      {/* Workflow Runner removed - Quick Actions replaces workflows */}
 
       {/* Full Screenshot Modal */}
       {expandedScreenshot && (

@@ -240,7 +240,7 @@ const KnowledgeBaseModal: React.FC<KnowledgeBaseModalProps> = ({
                       )}
                     </td>
                     <td className="py-3 pr-3">
-                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center justify-end gap-1">
                         {onViewDocument && (
                           <button
                             onClick={() => onViewDocument(doc)}

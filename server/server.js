@@ -17,6 +17,8 @@ import sourcesRouter from './routes/sources.js';
 import skillsRouter from './routes/skills.js';
 import emailTemplatesRouter from './routes/email-templates.js';
 import personalContextRouter from './routes/personal-context.js';
+import userSettingsRouter from './routes/user-settings.js';
+import quickActionsRouter from './routes/quick-actions.js';
 import { fetchChunksForDocuments, getDocumentsByIds } from './lib/supabase.js';
 import { loadSkills } from './lib/skill-loader.js';
 import { matchSkills, buildSystemPromptWithSkills, stripSkillInvocations } from './lib/skill-matcher.js';
@@ -128,8 +130,12 @@ const getAllowedOrigins = () => {
   // Development defaults
   return [
     'http://localhost:5173',  // Vite dev server
+    'http://localhost:5174',  // Vite dev server (alternate)
+    'http://localhost:5175',  // Vite dev server (alternate)
     'http://localhost:3001',  // Express server (self)
     'http://127.0.0.1:5173',
+    'http://127.0.0.1:5174',
+    'http://127.0.0.1:5175',
     'http://127.0.0.1:3001'
   ];
 };
@@ -148,7 +154,7 @@ const corsOptions = {
     return callback(new Error(`Origin ${origin} not allowed by CORS policy`));
   },
   credentials: true,
-  methods: ['GET', 'POST', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 };
 
@@ -172,6 +178,8 @@ app.use(express.static(staticPath));
 async function buildDocumentContext(documentIds, ephemeralContext) {
   let contextParts = [];
 
+  logger.chat.info({ documentIds, hasEphemeral: !!ephemeralContext }, 'Building document context');
+
   // Add ephemeral context (already extracted text from frontend)
   if (ephemeralContext && ephemeralContext.trim()) {
     contextParts.push(ephemeralContext);
@@ -180,6 +188,8 @@ async function buildDocumentContext(documentIds, ephemeralContext) {
   // Fetch and format persistent document chunks
   if (documentIds && documentIds.length > 0) {
     const { chunks, error: chunksError } = await fetchChunksForDocuments(documentIds);
+    
+    logger.chat.info({ chunksCount: chunks?.length, chunksError }, 'Fetched document chunks');
 
     if (!chunksError && chunks.length > 0) {
       // Get document names for better context
@@ -214,7 +224,7 @@ async function buildDocumentContext(documentIds, ephemeralContext) {
 
 // Chat endpoint using provider abstraction
 app.post('/api/chat', validateChatRequest, async (req, res) => {
-  const {
+  let {
     message,
     chatId,
     userId = 'default-user',
@@ -222,8 +232,24 @@ app.post('/api/chat', validateChatRequest, async (req, res) => {
     model = null,  // Per-request model selection
     documentIds = [],  // Active Knowledge Base document IDs
     ephemeralContext = '',  // Ephemeral document content (already extracted)
-    activeSkillIds = []  // Active skill IDs for this session
+    activeSkillIds = [],  // Active skill IDs for this session
+    personalContext = ''  // User's personal context for personalized responses
   } = req.body;
+
+  // Handle Quick Action extraction trigger - expand hidden trigger to full prompt
+  if (message === '__QUICK_ACTION_EXTRACT__') {
+    message = `Analyze the conversation above and extract a reusable Quick Action. You must:
+1. Generate a short, catchy name for this Quick Action (2-4 words)
+2. Choose an appropriate emoji icon
+3. Write a one-sentence description
+4. List the key steps (3-7 steps)
+5. List the tools/integrations used
+6. Create the golden instructions (the core prompt that makes this work)
+
+Then return the Quick Action data in the JSON format specified in your instructions.
+
+DO NOT ask the user to provide the name or description. YOU generate everything.`;
+  }
 
   logger.chat.info({
     messagePreview: message.substring(0, 100) + (message.length > 100 ? '...' : ''),
@@ -292,6 +318,12 @@ app.post('/api/chat', validateChatRequest, async (req, res) => {
 
     // Build document context if documents are active
     const documentContext = await buildDocumentContext(documentIds, ephemeralContext);
+    
+    if (documentContext) {
+      logger.chat.info({ contextLength: documentContext.length }, 'Document context built and will be injected into system prompt');
+    } else {
+      logger.chat.info('No document context to inject');
+    }
 
     // Load and match skills
     const availableSkills = await loadSkills(userId);
@@ -312,7 +344,7 @@ app.post('/api/chat', validateChatRequest, async (req, res) => {
 
     // Build enhanced system prompt with skills manifest and document context
     // Pass all available skills so agent knows what's available, plus matched skills for full content
-    const enhancedSystemPrompt = buildSystemPromptWithSkills(null, matchedSkills, documentContext, availableSkills);
+    const enhancedSystemPrompt = buildSystemPromptWithSkills(null, matchedSkills, documentContext, availableSkills, personalContext);
 
     // Strip skill invocations from message (e.g., /code-review -> rest of message)
     const cleanMessage = stripSkillInvocations(message);
@@ -460,6 +492,12 @@ app.use('/api/email-templates', emailTemplatesRouter);
 // Mount personal context router for user profile/context management
 app.use('/api/user/personal-context', personalContextRouter);
 
+// Mount user settings router for API key management
+app.use('/api/user/settings', userSettingsRouter);
+
+// Mount quick actions router for simplified workflow management
+app.use('/api/quick-actions', quickActionsRouter);
+
 // POST /api/composio/auth-url - Get Composio OAuth URL for a specific app
 app.post('/api/composio/auth-url', async (req, res) => {
   const { app: appName } = req.body;
@@ -580,6 +618,37 @@ app.post('/api/workflows/run', validateWorkflowRun, async (req, res) => {
     logger.workflow.error({ error: error.message, workflowId }, 'Workflow run error');
     res.write(`data: ${JSON.stringify({ type: 'error', message: error.message })}\n\n`);
     res.end();
+  }
+});
+
+// Generate session title endpoint
+app.post('/api/generate-title', async (req, res) => {
+  const { userMessage, assistantResponse } = req.body;
+  
+  try {
+    const provider = getProvider('claude');
+    if (!provider) {
+      // Fallback: extract first few words
+      const words = userMessage.split(' ').slice(0, 3).join(' ');
+      return res.json({ title: words.length > 20 ? words.substring(0, 20) : words });
+    }
+
+    const titlePrompt = `Generate a short 2-4 word title for this conversation. Return ONLY the title, nothing else.
+
+User: ${userMessage.substring(0, 200)}
+Assistant: ${assistantResponse.substring(0, 200)}
+
+Title:`;
+
+    const result = await provider.generateText(titlePrompt, { maxTokens: 20 });
+    const title = result.trim().replace(/^["']|["']$/g, '').substring(0, 30);
+    
+    res.json({ title: title || 'New Chat' });
+  } catch (error) {
+    logger.chat.error({ error: error.message }, 'Error generating title');
+    // Fallback
+    const words = userMessage.split(' ').slice(0, 3).join(' ');
+    res.json({ title: words.length > 20 ? words.substring(0, 20) : words });
   }
 });
 

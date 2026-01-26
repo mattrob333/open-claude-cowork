@@ -61,6 +61,20 @@ export async function signInWithMagicLink(email: string): Promise<{ error: AuthE
 }
 
 /**
+ * Sign in with Google OAuth
+ */
+export async function signInWithGoogle(): Promise<{ error: AuthError | null }> {
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${window.location.origin}/app`,
+    },
+  });
+
+  return { error };
+}
+
+/**
  * Sign out current user
  */
 export async function signOut(): Promise<{ error: AuthError | null }> {

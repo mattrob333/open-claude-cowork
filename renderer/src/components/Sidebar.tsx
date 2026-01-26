@@ -32,6 +32,7 @@ interface SidebarProps {
   onDeleteSession?: (id: string) => void;
   assets: KnowledgeAsset[];
   onToggleAsset: (id: string) => void;
+  onDeleteAsset?: (id: string) => void;
   onUploadFile?: (file: File) => Promise<void>;
   onViewDocument?: (asset: KnowledgeAsset) => void;
   onOpenKnowledgeBase?: () => void;
@@ -46,6 +47,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   onDeleteSession,
   assets,
   onToggleAsset,
+  onDeleteAsset,
   onUploadFile,
   onViewDocument,
   onOpenKnowledgeBase
@@ -222,7 +224,13 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* Zone A: Sessions (70%) */}
       <div className="flex-[7] flex flex-col overflow-hidden">
         <div className="h-[60px] flex items-center justify-between px-5 border-border border-b shrink-0">
-          <span className="text-sm font-semibold tracking-wider text-primaryText uppercase opacity-70">Notebooks</span>
+          <div className="flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-accent">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <polyline points="9 11 12 14 22 4"></polyline>
+            </svg>
+            <span className="text-base text-primaryText tracking-wide">GET SHIT <span className="font-bold">DONE.</span></span>
+          </div>
           <button
             onClick={onCreate}
             className="p-2 text-secondaryText hover:text-primaryText hover:bg-hover rounded-lg transition-all"
@@ -260,9 +268,13 @@ const Sidebar: React.FC<SidebarProps> = ({
                 ) : (
                   // Normal display mode
                   <>
-                    <div className="flex-1 flex items-center gap-2.5" onClick={() => onSelect(session.id)}>
-                      <ICONS.MessageSquare />
-                      <span className="truncate flex-1 font-medium">{session.title}</span>
+                    <div 
+                      className="flex-1 flex items-start gap-2.5" 
+                      onClick={() => onSelect(session.id)}
+                      title={session.title}
+                    >
+                      <span className="shrink-0 mt-0.5"><ICONS.MessageSquare /></span>
+                      <span className="flex-1 font-medium line-clamp-2 leading-tight">{session.title}</span>
                     </div>
 
                     {/* Three-dot menu button */}
@@ -398,6 +410,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 isActive={asset.isActive}
                 onClick={() => onViewDocument?.(asset)}
                 onToggle={() => onToggleAsset(asset.id)}
+                onDelete={onDeleteAsset ? () => onDeleteAsset(asset.id) : undefined}
               />
             ))}
           </div>

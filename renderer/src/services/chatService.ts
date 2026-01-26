@@ -1,10 +1,32 @@
 import { SERVER_URL } from '../constants';
 import { StreamChunk } from '../types';
 
+// Generate a short 2-3 word title for a chat session
+export async function generateSessionTitle(userMessage: string, assistantResponse: string): Promise<string> {
+  try {
+    const response = await fetch(`${SERVER_URL}/api/generate-title`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userMessage, assistantResponse })
+    });
+    if (!response.ok) {
+      throw new Error('Failed to generate title');
+    }
+    const data = await response.json();
+    return data.title || 'New Chat';
+  } catch (error) {
+    console.error('Error generating title:', error);
+    // Fallback: use first few words of user message
+    const words = userMessage.split(' ').slice(0, 3).join(' ');
+    return words.length > 25 ? words.substring(0, 25) + '...' : words;
+  }
+}
+
 export interface ChatOptions {
   documentIds?: string[];
   ephemeralContext?: string;
   activeSkillIds?: string[];
+  personalContext?: string;
 }
 
 export async function* streamChat(
@@ -24,7 +46,8 @@ export async function* streamChat(
       model,
       documentIds: options?.documentIds,
       ephemeralContext: options?.ephemeralContext,
-      activeSkillIds: options?.activeSkillIds
+      activeSkillIds: options?.activeSkillIds,
+      personalContext: options?.personalContext
     })
   });
 
@@ -187,9 +210,12 @@ export interface DocumentListResponse {
 /**
  * Upload a document to the server
  */
-export async function uploadDocument(file: File): Promise<DocumentInfo> {
+export async function uploadDocument(file: File, userId?: string): Promise<DocumentInfo> {
   const formData = new FormData();
   formData.append('file', file);
+  if (userId) {
+    formData.append('userId', userId);
+  }
 
   const response = await fetch(`${SERVER_URL}/api/documents/upload`, {
     method: 'POST',

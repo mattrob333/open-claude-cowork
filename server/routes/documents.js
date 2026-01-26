@@ -117,7 +117,8 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         buffer,
         documentId,
         originalname,
-        mimetype
+        mimetype,
+        userId
       );
 
       if (uploadError) {
@@ -149,16 +150,31 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       memoryDocuments.set(documentId, document);
     }
 
-    // Skip processing for images or if explicitly requested
+    // Skip processing for images, text files, or if explicitly requested
     const isImage = ['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(fileType);
-    if (skipProcessing === 'true' || skipProcessing === true || isImage) {
+    const isTextFile = ['txt', 'md', 'json', 'csv'].includes(fileType);
+    if (skipProcessing === 'true' || skipProcessing === true || isImage || isTextFile) {
       document.status = 'ready';
       document.processedAt = Date.now();
+
+      let chunksCount = 0;
+
+      // For text files, store the content as a single chunk so it can be queried
+      if (isTextFile && isSupabaseConfigured()) {
+        const textContent = buffer.toString('utf-8');
+        await storeChunks(documentId, userId, [{
+          content: textContent,
+          metadata: { source: originalname, type: fileType }
+        }]);
+        chunksCount = 1;
+        log.info({ documentId, contentLength: textContent.length }, 'Stored text file as single chunk');
+      }
 
       if (isSupabaseConfigured()) {
         await updateDocument(documentId, {
           status: 'ready',
-          processed_at: new Date().toISOString()
+          processed_at: new Date().toISOString(),
+          chunks_count: chunksCount
         });
       }
 
@@ -168,7 +184,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
         type: document.type,
         size: document.size,
         status: document.status,
-        chunksCount: 0,
+        chunksCount: chunksCount,
         processedAt: document.processedAt
       });
     }
@@ -179,11 +195,34 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       await updateDocument(documentId, { status: 'processing' });
     }
 
-    // Parse document using Docling
-    const result = await doclingClient.parseSync(buffer, originalname, {
-      chunkSize: parseInt(chunkSize, 10),
-      extractTables: extractTables === 'true' || extractTables === true
-    });
+    // Parse document using Docling (with fallback if unavailable)
+    let result;
+    try {
+      result = await doclingClient.parseSync(buffer, originalname, {
+        chunkSize: parseInt(chunkSize, 10),
+        extractTables: extractTables === 'true' || extractTables === true
+      });
+    } catch (doclingError) {
+      log.warn({ error: doclingError.message, documentId }, 'Docling unavailable, storing without parsing');
+      // Fallback: mark as ready without parsing
+      document.status = 'ready';
+      document.processedAt = Date.now();
+      if (isSupabaseConfigured()) {
+        await updateDocument(documentId, {
+          status: 'ready',
+          processed_at: new Date().toISOString()
+        });
+      }
+      return res.status(201).json({
+        id: document.id,
+        name: document.name,
+        type: document.type,
+        size: document.size,
+        status: 'ready',
+        chunksCount: 0,
+        processedAt: document.processedAt
+      });
+    }
 
     // Update document with parsed content
     document.status = result.status === 'completed' ? 'ready' : 'error';
@@ -381,8 +420,8 @@ router.get('/:id/url', async (req, res) => {
     return res.status(docError === 'Document not found' ? 404 : 500).json({ error: docError });
   }
 
-  // Construct file path
-  const filePath = `${id}/${document.name}`;
+  // Use stored storage_path, or construct from user_id if not available
+  const filePath = document.storage_path || `${document.user_id}/${id}/${document.name}`;
 
   const { url, error } = await getSignedUrl(filePath, parseInt(expiresIn, 10));
 
@@ -468,7 +507,9 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Document not found' });
     }
 
-    const { success, error } = await deleteDocument(id, document?.name);
+    // Use storage_path if available, otherwise construct from user_id
+    const storagePath = document?.storage_path || `${document?.user_id}/${id}/${document?.name}`;
+    const { success, error } = await deleteDocument(id, storagePath);
 
     if (error) {
       return res.status(500).json({ error });

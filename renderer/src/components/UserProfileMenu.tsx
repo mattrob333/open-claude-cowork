@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ICONS } from '../constants';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -20,8 +21,13 @@ const UserProfileMenu: React.FC<UserProfileMenuProps> = ({
   onOpenContextFile,
   onOpenAuth,
 }) => {
+  const navigate = useNavigate();
   const { user, profile, isAuthenticated, logout, isLoading } = useAuth();
   const [showMenu, setShowMenu] = useState(false);
+  
+  // Check for admin bypass (dev mode)
+  const hasAdminBypass = localStorage.getItem('admin_bypass') === 'true';
+  const isLoggedIn = isAuthenticated || hasAdminBypass;
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close menu on outside click
@@ -51,11 +57,22 @@ const UserProfileMenu: React.FC<UserProfileMenuProps> = ({
     if (user?.email) {
       return user.email[0].toUpperCase();
     }
+    if (hasAdminBypass) {
+      return 'AD';
+    }
     return '?';
   };
 
-  // If not authenticated, show sign in button
-  if (!isAuthenticated) {
+  // Get display name
+  const getDisplayName = () => {
+    if (profile?.displayName) return profile.displayName;
+    if (user?.email) return user.email.split('@')[0];
+    if (hasAdminBypass) return 'Admin';
+    return 'User';
+  };
+
+  // If not authenticated/logged in, show sign in button
+  if (!isLoggedIn) {
     return (
       <button
         onClick={onOpenAuth}
@@ -78,7 +95,7 @@ const UserProfileMenu: React.FC<UserProfileMenuProps> = ({
           {getInitials()}
         </div>
         <span className="text-sm text-primaryText max-w-[120px] truncate">
-          {profile?.displayName || user?.email?.split('@')[0]}
+          {getDisplayName()}
         </span>
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -105,7 +122,7 @@ const UserProfileMenu: React.FC<UserProfileMenuProps> = ({
               {profile?.displayName || 'User'}
             </div>
             <div className="text-xs text-secondaryText truncate">
-              {user?.email}
+              {user?.email || (hasAdminBypass ? 'admin@local' : '')}
             </div>
           </div>
 
@@ -133,12 +150,36 @@ const UserProfileMenu: React.FC<UserProfileMenuProps> = ({
               Personal Context File
             </button>
 
+            <button
+              onClick={() => {
+                setShowMenu(false);
+                navigate('/settings');
+              }}
+              className="w-full flex items-center gap-3 px-3 py-2 text-sm text-primaryText hover:bg-hover rounded-lg transition-all"
+            >
+              <ICONS.Settings />
+              API Keys & Settings
+            </button>
+
             <div className="my-1 border-t border-border" />
+
+            <button
+              onClick={() => {
+                setShowMenu(false);
+                navigate('/');
+              }}
+              className="w-full flex items-center gap-3 px-3 py-2 text-sm text-primaryText hover:bg-hover rounded-lg transition-all"
+            >
+              <ICONS.Home />
+              Back to Home
+            </button>
 
             <button
               onClick={async () => {
                 setShowMenu(false);
+                localStorage.removeItem('admin_bypass');
                 await logout();
+                navigate('/');
               }}
               disabled={isLoading}
               className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
