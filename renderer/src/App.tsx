@@ -9,7 +9,7 @@ import ToolConnections from './components/ToolConnections';
 import DocumentPreview from './components/DocumentPreview';
 import KnowledgeBaseModal from './components/KnowledgeBaseModal';
 import ResizeHandle from './components/ResizeHandle';
-import { BottomNavigation, MobileHeader, type MobileView } from './components/mobile';
+import { MobileHeader } from './components/mobile';
 import { Session, Message, Role, ToolLogEntry, KnowledgeAsset, ModelOption, WorkflowTemplate, EphemeralDocument } from './types';
 import { MODELS } from './constants';
 import { streamChat, uploadDocument, getDocuments, getDocumentUrl, ChatOptions, generateSessionTitle } from './services/chatService';
@@ -160,7 +160,6 @@ function App() {
 
   // Mobile responsive state
   const [isMobile, setIsMobile] = useState(false);
-  const [mobileView, setMobileView] = useState<MobileView>('chat');
   const [showLeftDrawer, setShowLeftDrawer] = useState(false);
   const [showRightDrawer, setShowRightDrawer] = useState(false);
 
@@ -822,6 +821,9 @@ function App() {
           onMenuClick={() => setShowLeftDrawer(true)}
           currentModel={currentModel}
           onModelChange={setCurrentModel}
+          onOpenWorkflows={() => setShowRightDrawer(true)}
+          onOpenKnowledge={() => setShowKnowledgeBase(true)}
+          onOpenSettings={() => setShowToolConnections(true)}
         />
       )}
 
@@ -871,7 +873,7 @@ function App() {
       {!isMobile && <ResizeHandle onResize={handleLeftSidebarResize} position="left" />}
 
       {/* Main Chat Area */}
-      <div className={`flex-1 flex flex-col ${isMobile ? 'pt-14 pb-16' : ''}`}>
+      <div className={`flex-1 flex flex-col ${isMobile ? 'pt-14' : ''}`}>
         <ErrorBoundary name="Chat">
           <ChatArea
             session={currentSession}
@@ -944,25 +946,7 @@ function App() {
         </div>
       )}
 
-      {/* Mobile Bottom Navigation */}
-      {isMobile && (
-        <BottomNavigation
-          activeView={mobileView}
-          onViewChange={(view) => {
-            setMobileView(view);
-            if (view === 'chat') {
-              setShowLeftDrawer(false);
-              setShowRightDrawer(false);
-            } else if (view === 'workflows') {
-              setShowRightDrawer(true);
-            } else if (view === 'knowledge') {
-              setShowKnowledgeBase(true);
-            } else if (view === 'settings') {
-              setShowToolConnections(true);
-            }
-          }}
-        />
-      )}
+      {/* Mobile Bottom Navigation - REMOVED, now in header lightning bolt menu */}
 
       {/* Run Workflow Modal */}
       {selectedWorkflow && (

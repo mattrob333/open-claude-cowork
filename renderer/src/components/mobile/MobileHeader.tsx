@@ -6,29 +6,36 @@ interface MobileHeaderProps {
   title: string;
   subtitle?: string;
   onMenuClick: () => void;
-  onRightAction?: () => void;
-  rightActionIcon?: React.ReactNode;
   currentModel?: ModelOption;
   onModelChange?: (model: ModelOption) => void;
+  onOpenWorkflows?: () => void;
+  onOpenKnowledge?: () => void;
+  onOpenSettings?: () => void;
 }
 
 const MobileHeader: React.FC<MobileHeaderProps> = ({
   title,
   subtitle,
   onMenuClick,
-  onRightAction,
-  rightActionIcon,
   currentModel,
-  onModelChange
+  onModelChange,
+  onOpenWorkflows,
+  onOpenKnowledge,
+  onOpenSettings
 }) => {
   const [showModelPicker, setShowModelPicker] = useState(false);
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const actionsRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setShowModelPicker(false);
+      }
+      if (actionsRef.current && !actionsRef.current.contains(e.target as Node)) {
+        setShowActionsMenu(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -106,17 +113,64 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({
         )}
       </div>
 
-      {/* Right Action */}
-      {onRightAction ? (
+      {/* Right Action - Lightning Bolt Menu */}
+      <div className="relative" ref={actionsRef}>
         <button
-          onClick={onRightAction}
-          className="w-10 h-10 flex items-center justify-center text-secondaryText hover:text-primaryText rounded-lg transition-colors"
+          onClick={() => setShowActionsMenu(!showActionsMenu)}
+          className="w-10 h-10 flex items-center justify-center text-accent hover:bg-hover rounded-lg transition-colors"
+          aria-label="Actions menu"
         >
-          {rightActionIcon || <ICONS.Plus />}
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            width="20" 
+            height="20" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="2" 
+            strokeLinecap="round" 
+            strokeLinejoin="round"
+          >
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
         </button>
-      ) : (
-        <div className="w-10" />
-      )}
+
+        {/* Actions Dropdown */}
+        {showActionsMenu && (
+          <div className="absolute top-full right-0 mt-2 w-48 bg-card border border-border rounded-xl shadow-2xl z-[100] py-1 overflow-hidden">
+            <button
+              onClick={() => {
+                onOpenWorkflows?.();
+                setShowActionsMenu(false);
+              }}
+              className="w-full flex items-center gap-3 px-4 py-3 text-sm text-primaryText hover:bg-hover transition-colors"
+            >
+              <ICONS.Wand />
+              <span>Quick Actions</span>
+            </button>
+            <button
+              onClick={() => {
+                onOpenKnowledge?.();
+                setShowActionsMenu(false);
+              }}
+              className="w-full flex items-center gap-3 px-4 py-3 text-sm text-primaryText hover:bg-hover transition-colors"
+            >
+              <ICONS.Database />
+              <span>Knowledge Base</span>
+            </button>
+            <button
+              onClick={() => {
+                onOpenSettings?.();
+                setShowActionsMenu(false);
+              }}
+              className="w-full flex items-center gap-3 px-4 py-3 text-sm text-primaryText hover:bg-hover transition-colors"
+            >
+              <ICONS.Settings />
+              <span>Settings</span>
+            </button>
+          </div>
+        )}
+      </div>
     </header>
   );
 };
