@@ -623,32 +623,22 @@ app.post('/api/workflows/run', validateWorkflowRun, async (req, res) => {
 
 // Generate session title endpoint
 app.post('/api/generate-title', async (req, res) => {
-  const { userMessage, assistantResponse } = req.body;
+  const { userMessage } = req.body;
   
   try {
-    const provider = getProvider('claude');
-    if (!provider) {
-      // Fallback: extract first few words
-      const words = userMessage.split(' ').slice(0, 3).join(' ');
-      return res.json({ title: words.length > 20 ? words.substring(0, 20) : words });
-    }
-
-    const titlePrompt = `Generate a short 2-4 word title for this conversation. Return ONLY the title, nothing else.
-
-User: ${userMessage.substring(0, 200)}
-Assistant: ${assistantResponse.substring(0, 200)}
-
-Title:`;
-
-    const result = await provider.generateText(titlePrompt, { maxTokens: 20 });
-    const title = result.trim().replace(/^["']|["']$/g, '').substring(0, 30);
+    // Simple title extraction: first 3-5 meaningful words
+    const words = userMessage
+      .replace(/[^\w\s]/g, '') // Remove punctuation
+      .split(/\s+/)
+      .filter(w => w.length > 2) // Skip short words
+      .slice(0, 4)
+      .join(' ');
     
-    res.json({ title: title || 'New Chat' });
+    const title = words.length > 0 ? words.substring(0, 30) : 'New Chat';
+    res.json({ title });
   } catch (error) {
     logger.chat.error({ error: error.message }, 'Error generating title');
-    // Fallback
-    const words = userMessage.split(' ').slice(0, 3).join(' ');
-    res.json({ title: words.length > 20 ? words.substring(0, 20) : words });
+    res.json({ title: 'New Chat' });
   }
 });
 
