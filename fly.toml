@@ -17,6 +17,7 @@ primary_region = 'iad'
   LOG_LEVEL = 'info'
   NODE_ENV = 'production'
   PORT = '3001'
+  CORS_ORIGINS = 'https://getshitdone.bot,https://www.getshitdone.bot,https://getshitdone-bot.fly.dev'
 
 [http_service]
   internal_port = 3001
