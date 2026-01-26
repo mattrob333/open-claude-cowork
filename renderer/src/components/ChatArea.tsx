@@ -453,8 +453,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({
 
   return (
     <main className="flex-1 bg-panel border-border flex flex-col relative overflow-hidden">
-      {/* Header */}
-      <div className="h-[60px] flex items-center justify-between px-8 border-border border-b shrink-0 bg-panel/80 backdrop-blur-md z-20">
+      {/* Header - Hidden on mobile (MobileHeader handles it) */}
+      <div className="hidden md:flex h-[60px] items-center justify-between px-8 border-border border-b shrink-0 bg-panel/80 backdrop-blur-md z-20">
         <div className="flex items-center gap-4">
           <div className="flex flex-col">
             <span className="text-sm font-bold text-primaryText truncate max-w-[200px]">
@@ -533,15 +533,15 @@ const ChatArea: React.FC<ChatAreaProps> = ({
       </div>
 
       {/* Chat Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-10 py-12 flex flex-col gap-10">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 md:px-10 py-6 md:py-12 flex flex-col gap-6 md:gap-10">
         {messages.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center mt-20">
             <div className="w-16 h-16 bg-accent/10 rounded-3xl flex items-center justify-center text-accent mb-6">
               <ICONS.Activity />
             </div>
-            <h1 className="text-3xl font-bold mb-3 tracking-tight">Get Shit Done.</h1>
-            <p className="text-secondaryText max-w-sm text-sm leading-relaxed opacity-60">
-              High-performance research workspace. Upload docs to knowledge base or trigger workflows from the studio.
+            <h1 className="text-2xl md:text-3xl font-bold mb-3 tracking-tight">Get Shit Done.</h1>
+            <p className="text-secondaryText max-w-xs md:max-w-sm text-xs md:text-sm leading-relaxed opacity-60 px-4">
+              Your AI workspace. Ask anything.
             </p>
           </div>
         ) : (
@@ -556,7 +556,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
       </div>
 
       {/* Floating Input Area */}
-      <div className="px-10 pb-10 pt-4 bg-gradient-to-t from-panel via-panel to-transparent">
+      <div className="px-3 md:px-10 pb-4 md:pb-10 pt-2 md:pt-4 bg-gradient-to-t from-panel via-panel to-transparent">
         <div className="max-w-4xl mx-auto">
           {/* Context Chips - Ephemeral Documents (only shows when there are documents) */}
           <ContextChips
@@ -582,7 +582,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Describe your workflow or ask a question..."
+            placeholder="Message..."
             rows={1}
             className="flex-1 bg-transparent border-none text-primaryText py-3 outline-none resize-none max-h-48 text-[15px] placeholder-secondaryText"
             style={{ height: 'auto' }}
@@ -601,7 +601,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
           </button>
           </div>
         </div>
-        <div className="text-center text-[10px] text-secondaryText mt-4 uppercase tracking-[0.2em] opacity-40 font-bold">
+        <div className="hidden md:block text-center text-[10px] text-secondaryText mt-4 uppercase tracking-[0.2em] opacity-40 font-bold">
           Omni-Channel Agent Engine • Ready for Tasking
         </div>
       </div>
