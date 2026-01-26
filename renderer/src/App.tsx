@@ -824,6 +824,10 @@ function App() {
           onOpenWorkflows={() => setShowRightDrawer(true)}
           onOpenKnowledge={() => setShowKnowledgeBase(true)}
           onOpenSettings={() => setShowToolConnections(true)}
+          onOpenAuth={() => setShowAuthModal(true)}
+          onOpenPersonalContext={() => setShowPersonalContext(true)}
+          isLoggedIn={!!user}
+          userEmail={user?.email}
         />
       )}
 

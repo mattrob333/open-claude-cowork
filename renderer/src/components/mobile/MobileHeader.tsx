@@ -11,6 +11,10 @@ interface MobileHeaderProps {
   onOpenWorkflows?: () => void;
   onOpenKnowledge?: () => void;
   onOpenSettings?: () => void;
+  onOpenAuth?: () => void;
+  onOpenPersonalContext?: () => void;
+  isLoggedIn?: boolean;
+  userEmail?: string;
 }
 
 const MobileHeader: React.FC<MobileHeaderProps> = ({
@@ -21,7 +25,11 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({
   onModelChange,
   onOpenWorkflows,
   onOpenKnowledge,
-  onOpenSettings
+  onOpenSettings,
+  onOpenAuth,
+  onOpenPersonalContext,
+  isLoggedIn,
+  userEmail
 }) => {
   const [showModelPicker, setShowModelPicker] = useState(false);
   const [showActionsMenu, setShowActionsMenu] = useState(false);
@@ -137,7 +145,15 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({
 
         {/* Actions Dropdown */}
         {showActionsMenu && (
-          <div className="absolute top-full right-0 mt-2 w-48 bg-card border border-border rounded-xl shadow-2xl z-[100] py-1 overflow-hidden">
+          <div className="absolute top-full right-0 mt-2 w-56 bg-card border border-border rounded-xl shadow-2xl z-[100] py-1 overflow-hidden">
+            {/* User info */}
+            {isLoggedIn && userEmail && (
+              <div className="px-4 py-2 border-b border-border">
+                <div className="text-xs text-secondaryText">Signed in as</div>
+                <div className="text-sm text-primaryText truncate">{userEmail}</div>
+              </div>
+            )}
+            
             <button
               onClick={() => {
                 onOpenWorkflows?.();
@@ -166,7 +182,34 @@ const MobileHeader: React.FC<MobileHeaderProps> = ({
               className="w-full flex items-center gap-3 px-4 py-3 text-sm text-primaryText hover:bg-hover transition-colors"
             >
               <ICONS.Settings />
-              <span>Settings</span>
+              <span>Tool Connections</span>
+            </button>
+            
+            {/* Divider */}
+            <div className="border-t border-border my-1" />
+            
+            {/* Personal Context */}
+            <button
+              onClick={() => {
+                onOpenPersonalContext?.();
+                setShowActionsMenu(false);
+              }}
+              className="w-full flex items-center gap-3 px-4 py-3 text-sm text-primaryText hover:bg-hover transition-colors"
+            >
+              <ICONS.User />
+              <span>Personal Context</span>
+            </button>
+            
+            {/* Auth */}
+            <button
+              onClick={() => {
+                onOpenAuth?.();
+                setShowActionsMenu(false);
+              }}
+              className="w-full flex items-center gap-3 px-4 py-3 text-sm text-primaryText hover:bg-hover transition-colors"
+            >
+              <ICONS.LogOut />
+              <span>{isLoggedIn ? 'Account' : 'Sign In'}</span>
             </button>
           </div>
         )}

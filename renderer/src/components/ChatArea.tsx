@@ -555,8 +555,8 @@ const ChatArea: React.FC<ChatAreaProps> = ({
         )}
       </div>
 
-      {/* Floating Input Area */}
-      <div className="px-3 md:px-10 pb-4 md:pb-10 pt-2 md:pt-4 bg-gradient-to-t from-panel via-panel to-transparent">
+      {/* Floating Input Area - with safe area padding for mobile */}
+      <div className="px-3 md:px-10 pb-8 md:pb-10 pt-2 md:pt-4 bg-gradient-to-t from-panel via-panel to-transparent" style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom, 2rem))' }}>
         <div className="max-w-4xl mx-auto">
           {/* Context Chips - Ephemeral Documents (only shows when there are documents) */}
           <ContextChips
