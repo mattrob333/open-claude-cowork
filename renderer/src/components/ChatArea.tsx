@@ -535,12 +535,41 @@ const ChatArea: React.FC<ChatAreaProps> = ({
       {/* Chat Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 md:px-10 py-6 md:py-12 flex flex-col gap-6 md:gap-10">
         {messages.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center text-center mt-20">
-            <div className="w-16 h-16 bg-accent/10 rounded-3xl flex items-center justify-center text-accent mb-6">
-              <ICONS.Activity />
+          <div className="flex-1 flex flex-col items-center justify-center text-center">
+            {/* Stacked Vertical Logo */}
+            <div className="flex flex-col gap-3 md:gap-4">
+              {/* GET */}
+              <div className="flex items-center gap-3 md:gap-4">
+                <div className="w-12 h-12 md:w-16 md:h-16 border-2 border-accent rounded-lg flex items-center justify-center">
+                  <svg className="w-7 h-7 md:w-10 md:h-10 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </div>
+                <span className="text-4xl md:text-6xl font-bold tracking-tight text-primaryText">GET</span>
+              </div>
+              {/* SHIT */}
+              <div className="flex items-center gap-3 md:gap-4">
+                <div className="w-12 h-12 md:w-16 md:h-16 border-2 border-accent rounded-lg flex items-center justify-center">
+                  <svg className="w-7 h-7 md:w-10 md:h-10 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </div>
+                <span className="text-4xl md:text-6xl font-bold tracking-tight text-primaryText">SHIT</span>
+              </div>
+              {/* DONE. */}
+              <div className="flex items-center gap-3 md:gap-4">
+                <div className="w-12 h-12 md:w-16 md:h-16 border-2 border-accent rounded-lg flex items-center justify-center">
+                  <svg className="w-7 h-7 md:w-10 md:h-10 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                  </svg>
+                </div>
+                <span className="text-4xl md:text-6xl font-bold tracking-tight">
+                  <span className="text-primaryText">DONE</span>
+                  <span className="text-accent">.</span>
+                </span>
+              </div>
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold mb-3 tracking-tight">Get Shit Done.</h1>
-            <p className="text-secondaryText max-w-xs md:max-w-sm text-xs md:text-sm leading-relaxed opacity-60 px-4">
+            <p className="text-secondaryText max-w-xs md:max-w-sm text-xs md:text-sm leading-relaxed opacity-60 px-4 mt-8">
               Your AI workspace. Ask anything.
             </p>
           </div>
