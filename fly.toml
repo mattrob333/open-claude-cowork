@@ -3,11 +3,15 @@
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'open-claude-cowork'
+app = 'getshitdone-bot'
 primary_region = 'iad'
 
 [build]
   dockerfile = 'Dockerfile'
+
+  [build.args]
+    VITE_SUPABASE_URL = "https://yqsklqovazvenduuwrxk.supabase.co"
+    VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlxc2tscW92YXp2ZW5kdXV3cnhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkyMDUwNjksImV4cCI6MjA4NDc4MTA2OX0.WkMcsKVELT6ZtlGhgAY-gwpVVF-JX835SzI2vYvYcqs"
 
 [env]
   LOG_LEVEL = 'info'

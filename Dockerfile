@@ -6,6 +6,10 @@
 # ============================================
 FROM node:20-alpine AS frontend-builder
 
+# Build args for Vite (embedded at build time)
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_ANON_KEY
+
 WORKDIR /app/renderer
 
 # Copy renderer package files
@@ -16,6 +20,10 @@ RUN npm ci
 
 # Copy renderer source
 COPY renderer/ ./
+
+# Set environment variables for Vite build
+ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
+ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
 
 # Build the frontend
 RUN npm run build
