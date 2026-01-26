@@ -536,34 +536,34 @@ const ChatArea: React.FC<ChatAreaProps> = ({
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 md:px-10 py-6 md:py-12 flex flex-col gap-6 md:gap-10">
         {messages.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center">
-            {/* Stacked Vertical Logo - 30% smaller */}
-            <div className="flex flex-col gap-2 md:gap-3">
+            {/* Stacked Vertical Logo - smaller on mobile */}
+            <div className="flex flex-col gap-1.5 md:gap-3">
               {/* GET */}
-              <div className="flex items-start gap-2 md:gap-3">
-                <div className="w-8 h-8 md:w-10 md:h-10 border-2 border-accent rounded flex items-center justify-center mt-1">
-                  <svg className="w-5 h-5 md:w-6 md:h-6 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <div className="flex items-start gap-1.5 md:gap-3">
+                <div className="w-6 h-6 md:w-10 md:h-10 border-2 border-accent rounded flex items-center justify-center mt-0.5 md:mt-1">
+                  <svg className="w-4 h-4 md:w-6 md:h-6 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12"></polyline>
                   </svg>
                 </div>
-                <span className="text-3xl md:text-4xl tracking-tight text-primaryText font-normal">GET</span>
+                <span className="text-2xl md:text-4xl tracking-tight text-primaryText font-normal">GET</span>
               </div>
               {/* SHIT */}
-              <div className="flex items-start gap-2 md:gap-3">
-                <div className="w-8 h-8 md:w-10 md:h-10 border-2 border-accent rounded flex items-center justify-center mt-1">
-                  <svg className="w-5 h-5 md:w-6 md:h-6 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <div className="flex items-start gap-1.5 md:gap-3">
+                <div className="w-6 h-6 md:w-10 md:h-10 border-2 border-accent rounded flex items-center justify-center mt-0.5 md:mt-1">
+                  <svg className="w-4 h-4 md:w-6 md:h-6 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12"></polyline>
                   </svg>
                 </div>
-                <span className="text-3xl md:text-4xl tracking-tight text-primaryText font-normal">SHIT</span>
+                <span className="text-2xl md:text-4xl tracking-tight text-primaryText font-normal">SHIT</span>
               </div>
               {/* DONE. */}
-              <div className="flex items-start gap-2 md:gap-3">
-                <div className="w-8 h-8 md:w-10 md:h-10 border-2 border-accent rounded flex items-center justify-center mt-1">
-                  <svg className="w-5 h-5 md:w-6 md:h-6 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <div className="flex items-start gap-1.5 md:gap-3">
+                <div className="w-6 h-6 md:w-10 md:h-10 border-2 border-accent rounded flex items-center justify-center mt-0.5 md:mt-1">
+                  <svg className="w-4 h-4 md:w-6 md:h-6 text-accent" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12"></polyline>
                   </svg>
                 </div>
-                <span className="text-3xl md:text-4xl tracking-tight font-bold">
+                <span className="text-2xl md:text-4xl tracking-tight font-bold">
                   <span className="text-primaryText">DONE</span>
                   <span className="text-accent">.</span>
                 </span>
