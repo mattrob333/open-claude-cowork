@@ -27,6 +27,7 @@ export interface ChatOptions {
   ephemeralContext?: string;
   activeSkillIds?: string[];
   personalContext?: string;
+  workflowPrompt?: string;
 }
 
 export async function* streamChat(
@@ -47,7 +48,8 @@ export async function* streamChat(
       documentIds: options?.documentIds,
       ephemeralContext: options?.ephemeralContext,
       activeSkillIds: options?.activeSkillIds,
-      personalContext: options?.personalContext
+      personalContext: options?.personalContext,
+      workflowPrompt: options?.workflowPrompt
     })
   });
 

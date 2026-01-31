@@ -8,6 +8,7 @@
 import { useState, useEffect } from 'react';
 import { getQuickActions, deleteQuickAction, QuickAction } from '../services/quickActionsService';
 import { ToolLogo } from './ToolLogos';
+import QuickActionModal from './QuickActionModal';
 
 // Category definitions
 const CATEGORIES = [
@@ -27,6 +28,7 @@ interface QuickActionsPanelProps {
 export default function QuickActionsPanel({ onSelectAction }: QuickActionsPanelProps) {
   const [activeCategory, setActiveCategory] = useState<string>('');
   const [isMobile, setIsMobile] = useState(false);
+  const [selectedAction, setSelectedAction] = useState<QuickAction | null>(null);
 
   // Detect mobile
   useEffect(() => {
@@ -116,7 +118,7 @@ export default function QuickActionsPanel({ onSelectAction }: QuickActionsPanelP
           quickActions.map((action) => (
             <div
               key={action.id}
-              onClick={() => onSelectAction(action)}
+              onClick={() => setSelectedAction(action)}
               className="group bg-[#1a1a1a] rounded-lg p-3 border border-white/5 hover:border-[#e07a5f]/30 transition-all cursor-pointer"
             >
               {/* Title & Tools */}
@@ -149,15 +151,20 @@ export default function QuickActionsPanel({ onSelectAction }: QuickActionsPanelP
 
               {/* Footer */}
               <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5">
-                <button className="text-xs text-[#e07a5f] hover:text-[#e8917c] transition-colors">
+                <button 
+                  onClick={(e) => { e.stopPropagation(); setSelectedAction(action); }}
+                  className="text-xs text-[#e07a5f] hover:text-[#e8917c] transition-colors"
+                >
                   Run now
                 </button>
-                <button
-                  onClick={(e) => handleDelete(action.id, e)}
-                  className="text-xs text-white/30 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
-                >
-                  Delete
-                </button>
+                {!action.is_default && (
+                  <button
+                    onClick={(e) => handleDelete(action.id, e)}
+                    className="text-xs text-white/30 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                  >
+                    Delete
+                  </button>
+                )}
               </div>
             </div>
           ))
@@ -190,6 +197,19 @@ export default function QuickActionsPanel({ onSelectAction }: QuickActionsPanelP
             </div>
           ))}
         </div>
+      )}
+
+      {/* Quick Action Modal */}
+      {selectedAction && (
+        <QuickActionModal
+          action={selectedAction}
+          isOpen={!!selectedAction}
+          onClose={() => setSelectedAction(null)}
+          onRun={() => {
+            onSelectAction(selectedAction);
+            setSelectedAction(null);
+          }}
+        />
       )}
     </div>
   );

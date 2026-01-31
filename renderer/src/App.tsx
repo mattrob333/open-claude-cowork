@@ -496,6 +496,10 @@ function App() {
       if (personalContext) {
         chatOptions.personalContext = personalContext;
       }
+      // Add active quick action prompt as workflow context
+      if (activeQuickActionPrompt) {
+        chatOptions.workflowPrompt = activeQuickActionPrompt;
+      }
 
       for await (const chunk of streamChat(text, sessionId!, provider, currentModel.id, chatOptions)) {
         if (chunk.type === 'text' && chunk.content) {
@@ -713,8 +717,13 @@ function App() {
     setSelectedWorkflow(null);
   }, [selectedWorkflow, handleSend]);
 
-  // Run quick action - sends system prompt to chat to trigger workflow
+  // Run quick action - stores system prompt as context and sends trigger message
+  const [activeQuickActionPrompt, setActiveQuickActionPrompt] = useState<string | null>(null);
+
   const handleRunQuickAction = useCallback((systemPrompt: string, title: string) => {
+    // Store the system prompt as active context
+    setActiveQuickActionPrompt(systemPrompt);
+
     // Create a new session for the quick action
     const newSession: Session = {
       id: generateId(),
@@ -729,10 +738,9 @@ function App() {
     // Close right drawer on mobile
     setShowRightDrawer(false);
 
-    // Send the system prompt as the first message to trigger the workflow
-    // The AI will read this and start the workflow (asking for company URL, etc.)
+    // Send a simple user message to trigger the workflow
     setTimeout(() => {
-      handleSend(systemPrompt);
+      handleSend(`Run the "${title}" workflow.`);
     }, 100);
   }, [handleSend]);
 

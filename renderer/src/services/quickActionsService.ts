@@ -16,6 +16,7 @@ export interface QuickAction {
   category: 'comms' | 'operations' | 'admin' | 'growth' | 'insights';
   created_at: string;
   updated_at: string;
+  is_default?: boolean;
 }
 
 export interface ExtractedQuickAction {

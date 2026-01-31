@@ -233,7 +233,8 @@ app.post('/api/chat', validateChatRequest, async (req, res) => {
     documentIds = [],  // Active Knowledge Base document IDs
     ephemeralContext = '',  // Ephemeral document content (already extracted)
     activeSkillIds = [],  // Active skill IDs for this session
-    personalContext = ''  // User's personal context for personalized responses
+    personalContext = '',  // User's personal context for personalized responses
+    workflowPrompt = ''  // Quick Action workflow instructions
   } = req.body;
 
   // Handle Quick Action extraction trigger - expand hidden trigger to full prompt
@@ -344,7 +345,12 @@ DO NOT ask the user to provide the name or description. YOU generate everything.
 
     // Build enhanced system prompt with skills manifest and document context
     // Pass all available skills so agent knows what's available, plus matched skills for full content
-    const enhancedSystemPrompt = buildSystemPromptWithSkills(null, matchedSkills, documentContext, availableSkills, personalContext);
+    let enhancedSystemPrompt = buildSystemPromptWithSkills(null, matchedSkills, documentContext, availableSkills, personalContext);
+    
+    // Add workflow prompt as high-priority context if present
+    if (workflowPrompt) {
+      enhancedSystemPrompt = `## ACTIVE WORKFLOW INSTRUCTIONS\n\nYou have been asked to run the following workflow. Follow these instructions carefully:\n\n${workflowPrompt}\n\n---\n\n${enhancedSystemPrompt || ''}`;
+    }
 
     // Strip skill invocations from message (e.g., /code-review -> rest of message)
     const cleanMessage = stripSkillInvocations(message);
