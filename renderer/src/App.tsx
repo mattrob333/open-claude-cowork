@@ -178,11 +178,12 @@ function App() {
   const currentMessages = activeSessionId ? (messagesBySession[activeSessionId] || []) : [];
 
   // Load sessions and messages from localStorage on mount
+  // NOTE: We intentionally do NOT restore activeSessionId - always start with fresh empty screen
+  // User can click on a previous chat in the sidebar to view it
   useEffect(() => {
     try {
       const savedSessions = localStorage.getItem('chat_sessions');
       const savedMessages = localStorage.getItem('chat_messages');
-      const savedActiveSessionId = localStorage.getItem('active_session_id');
       
       if (savedSessions) {
         setSessions(JSON.parse(savedSessions));
@@ -190,9 +191,8 @@ function App() {
       if (savedMessages) {
         setMessagesBySession(JSON.parse(savedMessages));
       }
-      if (savedActiveSessionId) {
-        setActiveSessionId(savedActiveSessionId);
-      }
+      // Clear any stored active session on load - always start fresh
+      localStorage.removeItem('active_session_id');
     } catch (err) {
       console.error('Error loading sessions from localStorage:', err);
     }
