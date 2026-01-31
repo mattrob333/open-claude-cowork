@@ -719,30 +719,40 @@ function App() {
 
   // Run quick action - stores system prompt as context and sends trigger message
   const [activeQuickActionPrompt, setActiveQuickActionPrompt] = useState<string | null>(null);
+  const [pendingQuickAction, setPendingQuickAction] = useState<{ sessionId: string; title: string; prompt: string } | null>(null);
 
   const handleRunQuickAction = useCallback((systemPrompt: string, title: string) => {
     // Store the system prompt as active context
     setActiveQuickActionPrompt(systemPrompt);
 
     // Create a new session for the quick action
+    const newSessionId = generateId();
     const newSession: Session = {
-      id: generateId(),
+      id: newSessionId,
       title: `🚀 ${title}`,
       lastActive: Date.now()
     };
     setSessions(prev => [newSession, ...prev]);
-    setActiveSessionId(newSession.id);
-    setMessagesBySession(prev => ({ ...prev, [newSession.id]: [] }));
+    setActiveSessionId(newSessionId);
+    setMessagesBySession(prev => ({ ...prev, [newSessionId]: [] }));
     setToolLogs([]);
 
     // Close right drawer on mobile
     setShowRightDrawer(false);
 
-    // Send a simple user message to trigger the workflow
-    setTimeout(() => {
+    // Set pending quick action to trigger after state updates
+    setPendingQuickAction({ sessionId: newSessionId, title, prompt: systemPrompt });
+  }, []);
+
+  // Effect to send the quick action message after session is created
+  useEffect(() => {
+    if (pendingQuickAction && activeSessionId === pendingQuickAction.sessionId) {
+      const { title } = pendingQuickAction;
+      setPendingQuickAction(null);
+      // Trigger the workflow
       handleSend(`Run the "${title}" workflow.`);
-    }, 100);
-  }, [handleSend]);
+    }
+  }, [pendingQuickAction, activeSessionId, handleSend]);
 
   // Save workflow - extracts conversation and opens wizard
   const handleSaveWorkflow = useCallback(() => {
