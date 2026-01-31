@@ -234,7 +234,8 @@ app.post('/api/chat', validateChatRequest, async (req, res) => {
     ephemeralContext = '',  // Ephemeral document content (already extracted)
     activeSkillIds = [],  // Active skill IDs for this session
     personalContext = '',  // User's personal context for personalized responses
-    workflowPrompt = ''  // Quick Action workflow instructions
+    workflowPrompt = '',  // Quick Action workflow instructions
+    history = []  // Conversation history from client
   } = req.body;
 
   // Handle Quick Action extraction trigger - expand hidden trigger to full prompt
@@ -366,7 +367,8 @@ DO NOT ask the user to provide the name or description. YOU generate everything.
         model,
         systemPrompt: enhancedSystemPrompt || undefined,
         allowedTools: ['Read', 'Write', 'Edit', 'Bash', 'Glob', 'Grep', 'WebSearch', 'WebFetch', 'TodoWrite'],
-        maxTurns: 20
+        maxTurns: 20,
+        history: history || []  // Pass conversation history for context
       })) {
         // Send chunk as SSE
         const data = `data: ${JSON.stringify(chunk)}\n\n`;

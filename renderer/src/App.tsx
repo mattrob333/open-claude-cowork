@@ -501,6 +501,21 @@ function App() {
         chatOptions.workflowPrompt = activeQuickActionPrompt;
       }
 
+      // Build conversation history from existing messages (excluding the current exchange)
+      const existingMessages = messagesBySession[sessionId!] || [];
+      // Filter out the placeholder messages we just added, and convert to history format
+      const historyMessages = existingMessages
+        .filter(m => m.content && m.content.trim() !== '') // Only messages with content
+        .slice(0, -2) // Exclude the user message and assistant placeholder we just added
+        .map(m => ({
+          role: m.role === Role.USER ? 'user' as const : 'assistant' as const,
+          content: m.content
+        }));
+      
+      if (historyMessages.length > 0) {
+        chatOptions.history = historyMessages;
+      }
+
       for await (const chunk of streamChat(text, sessionId!, provider, currentModel.id, chatOptions)) {
         if (chunk.type === 'text' && chunk.content) {
           setMessagesBySession(prev => {

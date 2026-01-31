@@ -72,11 +72,22 @@ export class ClaudeProvider extends BaseProvider {
       mcpServers = {},
       allowedTools = this.defaultAllowedTools,
       maxTurns = this.defaultMaxTurns,
-      systemPrompt = null
+      systemPrompt = null,
+      history = []  // Conversation history from client
     } = params;
 
     // Check if browser tools are requested
     const hasBrowserTools = allowedTools.some(t => this.browserToolNames.includes(t));
+
+    // Build the full prompt with conversation history
+    let fullPrompt = prompt;
+    if (history && history.length > 0) {
+      const historyText = history.map(msg => 
+        `${msg.role === 'user' ? 'Human' : 'Assistant'}: ${msg.content}`
+      ).join('\n\n');
+      fullPrompt = `Previous conversation:\n${historyText}\n\nHuman: ${prompt}`;
+      console.log('[Claude] Including', history.length, 'messages of history');
+    }
 
     // Build query options - exact match to server.js structure
     const queryOptions = {
@@ -103,7 +114,7 @@ export class ClaudeProvider extends BaseProvider {
 
     // Stream responses from Claude Agent SDK - matches server.js exactly
     for await (const chunk of query({
-      prompt,
+      prompt: fullPrompt,
       options: queryOptions
     })) {
       // Debug: log all system messages to find session_id

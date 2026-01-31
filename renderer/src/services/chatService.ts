@@ -22,12 +22,18 @@ export async function generateSessionTitle(userMessage: string, assistantRespons
   }
 }
 
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export interface ChatOptions {
   documentIds?: string[];
   ephemeralContext?: string;
   activeSkillIds?: string[];
   personalContext?: string;
   workflowPrompt?: string;
+  history?: ChatMessage[];  // Conversation history for context
 }
 
 export async function* streamChat(
@@ -49,7 +55,8 @@ export async function* streamChat(
       ephemeralContext: options?.ephemeralContext,
       activeSkillIds: options?.activeSkillIds,
       personalContext: options?.personalContext,
-      workflowPrompt: options?.workflowPrompt
+      workflowPrompt: options?.workflowPrompt,
+      history: options?.history
     })
   });
 
