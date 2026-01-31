@@ -57,6 +57,8 @@ interface AgentStudioProps {
   activeSkillIds?: string[];
   onToggleSkill?: (skillId: string) => void;
   onActivateSkill?: (skillId: string) => void;
+  // Quick Actions
+  onRunQuickAction?: (systemPrompt: string, title: string) => void;
 }
 
 type TabType = 'quick' | 'skills';
@@ -95,6 +97,7 @@ const AgentStudio: React.FC<AgentStudioProps> = ({
   activeSkillIds = [],
   onToggleSkill,
   onActivateSkill,
+  onRunQuickAction,
 }) => {
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
   const [expandedScreenshot, setExpandedScreenshot] = useState<{
@@ -122,10 +125,12 @@ const AgentStudio: React.FC<AgentStudioProps> = ({
     { id: 'skills', label: 'Skills', badge: activeSkillIds.length > 0 ? activeSkillIds.length : undefined },
   ];
 
-  // Handle quick action selection
+  // Handle quick action selection - trigger the workflow
   const handleSelectQuickAction = (action: QuickAction) => {
-    console.log('Selected quick action:', action);
-    // TODO: Pre-fill chat with the system prompt
+    console.log('Running quick action:', action.title);
+    if (onRunQuickAction) {
+      onRunQuickAction(action.system_prompt, action.title);
+    }
   };
 
   return (

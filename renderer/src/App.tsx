@@ -713,6 +713,29 @@ function App() {
     setSelectedWorkflow(null);
   }, [selectedWorkflow, handleSend]);
 
+  // Run quick action - sends system prompt to chat to trigger workflow
+  const handleRunQuickAction = useCallback((systemPrompt: string, title: string) => {
+    // Create a new session for the quick action
+    const newSession: Session = {
+      id: generateId(),
+      title: `🚀 ${title}`,
+      lastActive: Date.now()
+    };
+    setSessions(prev => [newSession, ...prev]);
+    setActiveSessionId(newSession.id);
+    setMessagesBySession(prev => ({ ...prev, [newSession.id]: [] }));
+    setToolLogs([]);
+
+    // Close right drawer on mobile
+    setShowRightDrawer(false);
+
+    // Send the system prompt as the first message to trigger the workflow
+    // The AI will read this and start the workflow (asking for company URL, etc.)
+    setTimeout(() => {
+      handleSend(systemPrompt);
+    }, 100);
+  }, [handleSend]);
+
   // Save workflow - extracts conversation and opens wizard
   const handleSaveWorkflow = useCallback(() => {
     setShowWorkflowWizard(true);
@@ -945,6 +968,7 @@ function App() {
               activeSkillIds={activeSkillIds}
               onToggleSkill={handleToggleSkill}
               onActivateSkill={handleActivateSkill}
+              onRunQuickAction={handleRunQuickAction}
             />
           </ErrorBoundary>
         </div>

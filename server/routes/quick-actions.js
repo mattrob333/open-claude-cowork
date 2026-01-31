@@ -25,14 +25,165 @@ const inMemoryQuickActions = new Map();
 // Categories matching Tasklet.ai
 const CATEGORIES = ['comms', 'operations', 'admin', 'growth', 'insights'];
 
+// Default Quick Actions (seeded for all users)
+const DEFAULT_QUICK_ACTIONS = [
+  {
+    id: 'qa_default_acquiportal',
+    title: 'AcquiPortal Company Analysis',
+    description: 'Run comprehensive acquisition analysis on any company URL. Generates investor-grade analysis with financial estimates, AI transformation opportunities, and deal package.',
+    category: 'operations',
+    tools_used: ['firecrawl', 'github', 'web_search', 'composio'],
+    system_prompt: `# ACQUIPORTAL COMPANY ANALYSIS WORKFLOW
+
+You are an AI acquisition analyst for AcquiPortal. Your task is to analyze a target company and produce a comprehensive, investor-grade analysis package.
+
+## FIRST: ASK FOR INPUT
+
+Before starting, ask the user:
+
+> **What company would you like me to analyze?**
+> Please provide either:
+> - The company website URL (e.g., https://smith-hvac.com)
+> - Or the company name and location (e.g., "Smith HVAC Services, Phoenix AZ")
+
+Wait for the user's response before proceeding.
+
+---
+
+## ANALYSIS WORKFLOW
+
+Once you have the company info, execute these phases:
+
+### Phase 1: Discovery & Data Collection
+
+1. **Website Analysis** (use Firecrawl)
+   - Scrape the company website for all available information
+   - Identify: services, service areas, team members, contact info
+   - Assess: website quality, mobile responsiveness, online booking
+   - Note any technology signals (software mentions, integrations)
+
+2. **Digital Presence Audit** (use web search)
+   - Search "[Company Name] reviews"
+   - Find Google Business Profile: rating, review count
+   - Check Yelp, BBB, industry-specific review sites
+   - Search for social media presence
+
+3. **Owner Research** (use web search)
+   - Search LinkedIn for owner/founder
+   - Estimate owner age from career timeline
+   - Look for news articles, press mentions
+   - Check business registration if possible
+
+4. **Competitive Landscape** (use web search)
+   - Find top 3-5 competitors in same area
+   - Compare ratings, digital presence
+
+### Phase 2: Financial Analysis
+
+5. **Revenue Estimation** - Use multiple methods:
+   - **Employee method**: Count employees × $150-200K per employee
+   - **Review method**: Total reviews ÷ 5-10% review rate × avg ticket
+   - **Service area method**: Population × market penetration
+
+6. **Valuation Analysis**
+   - Apply industry EBITDA margins (8-15% for services)
+   - Add back owner comp ($75-150K)
+   - Calculate SDE (Seller's Discretionary Earnings)
+   - Apply multiples: 2.5-4x SDE (Main Street) or 4-6x EBITDA (Lower MM)
+
+### Phase 3: AI Transformation Opportunity
+
+7. **Current State Scoring** (1-5 scale):
+   - Digital Maturity (website, online booking, CRM)
+   - Operational Efficiency (scheduling, dispatch)
+   - Customer Communication (response time, automation)
+   - Back Office (invoicing, payments)
+   - Marketing (SEO, advertising)
+
+8. **AI Opportunity Map** - Evaluate each:
+   - Voice AI for inbound calls → capture missed leads
+   - AI dispatch/scheduling optimization
+   - Automated quoting and proposals
+   - Predictive maintenance subscription model
+   - AI chatbot for website/SMS
+   - Automated review solicitation
+   - AI bookkeeping/invoicing
+
+   For each, estimate: implementation cost, annual impact, payback period
+
+### Phase 4: Deal Package Generation
+
+9. **Generate Outputs**:
+   - Executive Summary (1-page overview)
+   - Investment Memo (detailed analysis)
+   - AI Transformation Roadmap with ROI projections
+   - Owner Outreach Script (email + phone)
+   - Red Flags & Risk Assessment
+
+### Phase 5: Storage (use GitHub via Composio)
+
+10. **Save to GitHub**:
+    - Create folder: \`analyses/[company-slug]-[date]/\`
+    - Save all markdown files
+    - Include data sources and confidence levels
+
+---
+
+## OUTPUT FORMAT
+
+Present findings in this structure:
+
+\`\`\`
+## 📊 EXECUTIVE SUMMARY
+[Company] | [Location] | Est. Revenue: $X.XM | Valuation: $X-$XM
+
+### Key Findings
+- [3-5 bullet points]
+
+### AI Transformation Potential
+- Total annual value creation: $XXK
+- Key opportunities: [list]
+
+### Recommendation
+[PROCEED / NEEDS MORE INFO / PASS]
+\`\`\`
+
+Then provide detailed sections for each phase.
+
+---
+
+## CONFIDENCE LEVELS
+
+Rate each data point:
+- **HIGH**: Multiple sources, public data
+- **MEDIUM**: Single source, reasonable inference
+- **LOW**: Significant assumptions required
+
+---
+
+## BEGIN
+
+Start by asking for the company to analyze.`,
+    is_default: true,
+    created_at: '2026-01-30T00:00:00.000Z',
+    updated_at: '2026-01-30T00:00:00.000Z',
+  }
+];
+
 /**
  * GET /api/quick-actions
- * Get all quick actions for a user
+ * Get all quick actions for a user (includes defaults)
  */
 router.get('/', async (req, res) => {
   try {
     const userId = req.headers.authorization?.replace('Bearer ', '') || 'anonymous';
     const { category } = req.query;
+
+    // Filter defaults by category if specified
+    let defaults = DEFAULT_QUICK_ACTIONS.map(a => ({ ...a, user_id: userId }));
+    if (category && CATEGORIES.includes(category)) {
+      defaults = defaults.filter(a => a.category === category);
+    }
 
     if (supabase) {
       let query = supabase
@@ -48,14 +199,19 @@ router.get('/', async (req, res) => {
       const { data, error } = await query;
       if (error) throw error;
 
-      return res.json({ quickActions: data || [] });
+      // Merge defaults with user actions (defaults first)
+      const userActions = data || [];
+      const allActions = [...defaults, ...userActions];
+      return res.json({ quickActions: allActions });
     } else {
       // In-memory fallback
       const userActions = inMemoryQuickActions.get(userId) || [];
       const filtered = category
         ? userActions.filter(a => a.category === category)
         : userActions;
-      return res.json({ quickActions: filtered });
+      // Merge defaults with user actions
+      const allActions = [...defaults, ...filtered];
+      return res.json({ quickActions: allActions });
     }
   } catch (error) {
     console.error('Error fetching quick actions:', error);
